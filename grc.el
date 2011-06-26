@@ -17,18 +17,21 @@
      (html2text)
      (buffer-substring (point-min) (point-max)))))
 
-
-;;(xml-get-children (first grc-xml-entries) 'id)
-;;(grc-xml-get-child (first grc-xml-entries) 'id)
 (defun grc-process-entry (entry)
-  `((title . ,(grc-strip-html (grc-xml-get-child entry 'title)))
+  `((id . ,(grc-xml-get-child (first grc-xml-entries) 'id))
+    (title . ,(grc-strip-html (grc-xml-get-child entry 'title)))
+    ;; (date . ,(format-time-string
+    ;;           "%c"
+    ;;           (seconds-to-time
+    ;;            (/ (string-to-int (xml-get-attribute entry
+    ;;                                                 'gr:crawl-timestamp-msec))
+    ;;               1000))))
     (date . ,(grc-xml-get-child entry 'published))
     (link . ,(xml-get-attribute (assq 'link entry) 'href))
     (source . ,(grc-strip-html (grc-xml-get-child
                                 (first (xml-get-children entry 'source))
                                 'title)))
     (summary . ,(grc-strip-html (grc-xml-get-child entry 'summary)))))
-
 
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
@@ -178,12 +181,7 @@ All currently available key bindings:
 
 
 
-
-
-
-
-
-(defvar grc-viewn-mode-map
+(defvar grc-view-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-help)
     (define-key map "q" 'grc-kill-this-buffer)
