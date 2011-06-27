@@ -1,3 +1,10 @@
+;; TODO: Add (unread) (starred) etc to view
+;;       when show or view-external, mark as read, update view
+;; TODO: requests need to be much more async.  It's unacceptable to
+;;       freeze emacs when fetching feeds
+
+
+(require 'cl)
 (require 'html2text)
 
 ;; greader-star
@@ -45,14 +52,16 @@
 (defun grc-xml-get-child (node child-name)
   (car (last (assq child-name node))))
 
+;;TODO: figure out why unicode works except in the g-using-scratch buffer...
 (defun grc-strip-html (text)
   (when text
     (g-using-scratch
      (insert text)
 
-     ;; There should be a better way...
+     ;; There must be a better way...
      (html2text-replace-string "’" "'" (point-min) (point-max))
-
+     (html2text-replace-string "–" "--" (point-min) (point-max))
+     (html2text-replace-string "—" "--" (point-min) (point-max))
      (html2text)
      (buffer-substring (point-min) (point-max)))))
 
@@ -72,12 +81,15 @@
                                 'title)))
     (feed . ,(xml-get-attribute (assq 'source entry) 'gr:stream-id))
     (summary . ,(grc-xml-get-child entry 'summary))
-    (content . ,(grc-xml-get-child entry 'content))))
+    (content . ,(grc-xml-get-child entry 'content))
+    (categories . ,(mapcar (lambda (e) (xml-get-attribute e 'label))
+                           (xml-get-children entry 'category)))))
 
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
          (xml-entries (xml-get-children root 'entry))
          (entries (grc-sort-by 'date (mapcar 'grc-process-entry xml-entries))))
+    (setq grc-xml-entries xml-entries)
     entries))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -95,14 +107,27 @@
           str))
     ""))
 
+(defun grc-format-categories (categories)
+  (let ((cats (intersection categories
+                            '("read" "broadcast"
+                              "kept-unread" "starred")
+                            :test 'string=))
+        (cat-names '(("read" . "Read") ("broadcast" . "Shared")
+                     ("kept-unread" . "Kept Unread") ("starred" . "Starred"))))
+    (if cats
+        (concat "(" (mapconcat (apply-partially 'aget cat-names) cats " ") ")")
+      "(Unread)")))
+
 (defun grc-print-entry (entry)
-  (let ((source ))
-    (insert
-     (format "%-12s    %-25s   %s\n"
-             (format-time-string "%a %l:%M %p"
-                                 (date-to-time (aget entry 'date t)))
-             (grc-truncate-text (aget entry 'source t) 22 t)
-             (aget entry 'title t)))))
+  (insert
+   (format "%-12s    %-25s   %s%s\n"
+           (format-time-string "%a %l:%M %p"
+                               (date-to-time (aget entry 'date t)))
+           (grc-truncate-text (aget entry 'source t) 22 t)
+           (aget entry 'title t)
+           (if (< 0 (length (aget entry 'categories)))
+               (format " %s" (grc-format-categories (aget entry 'categories)))
+             ""))))
 
 (defun grc-group-by (field entries)
   (let* ((groups (remq nil (remove-duplicates
@@ -140,13 +165,13 @@
     (grc-list-mode)
     (grc-display-list (grc-remote-entries))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; General view functions
 (defun grc-get-current-item ()
   "utility function to get the item from the current line in list view"
   (with-current-buffer (get-buffer "*grc list*")
     (nth (- (line-number-at-pos) 1) grc-entry-cache)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; General view functions
 (defun grc-next-item ()
   (interactive)
   (next-line)
@@ -181,8 +206,28 @@
           (w3m-buffer)
         (html2text)))))
 
+;; TODO: add info to the entry that it is marked read update view code
+;; to show this info e.g., date source title (un/read)
+
+(defun grc-mark-read
+  (greader-re-authenticate)
+  (condition-case nil
+      (grc-mark-read entry)
+    (error "There was a problem marking the item as read")))
+
+(defun grc-mark-read-and-remove (entry)
+  (grc-mark-read entry)
+  (delete entry grc-entry-cache))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
+(defun grc-list-refresh ()
+  (with-current-buffer (get-buffer "*grc list*")
+    (let ((line (line-number-at-pos)))
+      (grc-display-list grc-entry-cache)
+      (goto-line line)
+      (beginning-of-line))))
+
 (defun grc-list-help ()
   ;;TODO
   (interactive)
@@ -194,21 +239,16 @@
   (let* ((entry (grc-get-current-item))
          (link (aget entry 'link t)))
     (if link
-        (browse-url link)
+        (progn
+          (browse-url link)
+
+          )
       (message "Unable to view this item"))))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
-  (greader-re-authenticate)
-  (let ((entry (grc-get-current-item)))
-    (condition-case nil
-        (progn
-          (grc-mark-read entry)
-          (delete entry grc-entry-cache)
-          (let ((inhibit-read-only t))
-            (delete-region (point-at-bol) (+ 1 (point-at-eol)))
-            (beginning-of-line)))
-      (error "There was a problem marking the item as read"))))
+  (grc-mark-read-and-remove (grc-get-current-item))
+  (grc-list-refresh))
 
 (defun grc-list-next-item ()
   (interactive)
@@ -271,7 +311,6 @@ All currently available key bindings:
     (define-key map "?" 'grc-help)
     (define-key map "q" 'grc-kill-this-buffer)
     (define-key map "v" 'grc-view-external)
-    (define-key map "x" 'grc-mark-read-and-remove)
     (define-key map "n" 'grc-next-item)
     (define-key map "p" 'grc-previous-item)
     (define-key map " " 'grc-advance-or-show-next-item)
