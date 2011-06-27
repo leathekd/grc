@@ -162,6 +162,25 @@
   (interactive)
   (kill-buffer (current-buffer)))
 
+(defun grc-show-item (entry)
+  ;; save entry as grc-current-entry
+  (setq grc-current-entry entry)
+  (with-current-buffer (get-buffer-create "*grc show*")
+    (grc-view-mode)
+    (let ((inhibit-read-only t)
+          (summary (or (aget entry 'content t)
+                       (aget entry 'summary t)
+                       "No summary provided.")))
+      (erase-buffer)
+      (insert "Title: "  (aget entry 'title) "<br/>")
+      (insert "Link: "   (aget entry 'link) "<br/>")
+      (insert "Date: "   (aget entry 'date) "<br/>")
+      (insert "Source: " (aget entry 'source) "<br/>")
+      (insert "<br/>" summary)
+      (if (featurep 'w3m)
+          (w3m-buffer)
+        (html2text)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
 (defun grc-list-help ()
@@ -189,7 +208,7 @@
           (let ((inhibit-read-only t))
             (delete-region (point-at-bol) (+ 1 (point-at-eol)))
             (beginning-of-line)))
-        (error "There was a problem marking the item as read"))))
+      (error "There was a problem marking the item as read"))))
 
 (defun grc-list-next-item ()
   (interactive)
@@ -212,27 +231,8 @@
       (grc-show-item))))
 
 (defun grc-list-show-item ()
-  ;;TODO refactor into show-item that takes an entry
   (interactive)
-  (let ((entry (grc-get-current-item)))
-    ;; save entry as grc-current-entry
-    (setq grc-current-entry entry)
-    (interactive)
-    (with-current-buffer (get-buffer-create "*grc show*")
-      (grc-view-mode)
-      (let ((inhibit-read-only t)
-            (summary (or (aget entry 'content t)
-                         (aget entry 'summary t)
-                         "No summary provided.")))
-        (erase-buffer)
-        (insert "Title: "  (aget entry 'title) "<br/>")
-        (insert "Link: "   (aget entry 'link) "<br/>")
-        (insert "Date: "   (aget entry 'date) "<br/>")
-        (insert "Source: " (aget entry 'source) "<br/>")
-        (insert "<br/>" summary)
-        (if (featurep 'w3m)
-            (w3m-buffer)
-          (html2text))))))
+  (grc-show-item (grc-get-current-item)))
 
 (Defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
