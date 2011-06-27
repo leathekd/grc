@@ -52,6 +52,10 @@
 (defun grc-xml-get-child (node child-name)
   (car (last (assq child-name node))))
 
+(defun grc-filter (condp lst)
+  (delq nil
+        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+
 ;;TODO: figure out why unicode works except in the g-using-scratch buffer...
 (defun grc-strip-html (text)
   (when text
@@ -64,6 +68,12 @@
      (html2text-replace-string "—" "--" (point-min) (point-max))
      (html2text)
      (buffer-substring (point-min) (point-max)))))
+
+(defun grc-extract-categories (entry filter-string)
+  (mapcar (lambda (e) (xml-get-attribute e 'label))
+          (grc-filter (lambda (e) (string-match filter-string
+                                           (xml-get-attribute e 'term)))
+                      (xml-get-children entry 'category))))
 
 (defun grc-process-entry (entry)
   `((id . ,(grc-xml-get-child (first grc-xml-entries) 'id))
@@ -82,8 +92,8 @@
     (feed . ,(xml-get-attribute (assq 'source entry) 'gr:stream-id))
     (summary . ,(grc-xml-get-child entry 'summary))
     (content . ,(grc-xml-get-child entry 'content))
-    (categories . ,(mapcar (lambda (e) (xml-get-attribute e 'label))
-                           (xml-get-children entry 'category)))))
+    (label . ,(grc-extract-categories entry "label"))
+    (categories . ,(grc-extract-categories entry "state"))))
 
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
@@ -107,16 +117,25 @@
           str))
     ""))
 
-(defun grc-format-categories (categories)
-  (let ((cats (intersection categories
-                            '("read" "broadcast"
-                              "kept-unread" "starred")
-                            :test 'string=))
-        (cat-names '(("read" . "Read") ("broadcast" . "Shared")
-                     ("kept-unread" . "Kept Unread") ("starred" . "Starred"))))
+(defun grc-format-categories (entry)
+  (let* ((labelz (aget entry 'label t))
+         (categories (aget entry 'categories t))
+         (cats (intersection categories
+                             '("read" "broadcast"
+                               "kept-unread" "starred")
+                             :test 'string=))
+         (cat-names '(("read" . "Read") ("broadcast" . "Shared")
+                      ("kept-unread" . "Kept Unread") ("starred" . "Starred"))))
     (if cats
-        (concat "(" (mapconcat (apply-partially 'aget cat-names) cats " ") ")")
-      "(Unread)")))
+        (concat "("
+                (when labelz (mapconcat 'identity labelz " "))
+                (when labelz " ")
+                (mapconcat (apply-partially 'aget cat-names) cats " ")
+                ")")
+      (concat "("
+              (when labelz (mapconcat 'identity labelz " "))
+              (when labelz " ")
+              "Unread)"))))
 
 (defun grc-print-entry (entry)
   (insert
@@ -125,8 +144,9 @@
                                (date-to-time (aget entry 'date t)))
            (grc-truncate-text (aget entry 'source t) 22 t)
            (aget entry 'title t)
-           (if (< 0 (length (aget entry 'categories)))
-               (format " %s" (grc-format-categories (aget entry 'categories)))
+           (if (or (< 0 (length (aget entry 'categories)))
+                   (< 0 (length (aget entry 'labels))))
+               (format " %s" (grc-format-categories entry))
              ""))))
 
 (defun grc-group-by (field entries)
@@ -161,9 +181,11 @@
 ;; Main entry function
 (defun grc-reading-list ()
   (interactive)
-  (with-current-buffer (get-buffer-create "*grc list*")
-    (grc-list-mode)
-    (grc-display-list (grc-remote-entries))))
+  (let ((buffer (get-buffer-create "*grc list*")))
+    (with-current-buffer buffer
+      (grc-list-mode)
+      (grc-display-list (grc-remote-entries))
+      (switch-to-buffer buffer))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
@@ -190,21 +212,23 @@
 (defun grc-show-item (entry)
   ;; save entry as grc-current-entry
   (setq grc-current-entry entry)
-  (with-current-buffer (get-buffer-create "*grc show*")
-    (grc-view-mode)
-    (let ((inhibit-read-only t)
-          (summary (or (aget entry 'content t)
-                       (aget entry 'summary t)
-                       "No summary provided.")))
-      (erase-buffer)
-      (insert "Title: "  (aget entry 'title) "<br/>")
-      (insert "Link: "   (aget entry 'link) "<br/>")
-      (insert "Date: "   (aget entry 'date) "<br/>")
-      (insert "Source: " (aget entry 'source) "<br/>")
-      (insert "<br/>" summary)
-      (if (featurep 'w3m)
-          (w3m-buffer)
-        (html2text)))))
+  (let ((buffer (get-buffer-create "*grc show*")))
+    (with-current-buffer buffer
+      (grc-view-mode)
+      (let ((inhibit-read-only t)
+            (summary (or (aget entry 'content t)
+                         (aget entry 'summary t)
+                         "No summary provided.")))
+        (erase-buffer)
+        (insert "Title: "  (aget entry 'title) "<br/>")
+        (insert "Link: "   (aget entry 'link) "<br/>")
+        (insert "Date: "   (aget entry 'date) "<br/>")
+        (insert "Source: " (aget entry 'source) "<br/>")
+        (insert "<br/>" summary)
+        (if (featurep 'w3m)
+            (w3m-buffer)
+          (html2text))))
+    (switch-to-buffer buffer)))
 
 ;; TODO: add info to the entry that it is marked read update view code
 ;; to show this info e.g., date source title (un/read)
