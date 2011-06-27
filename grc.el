@@ -234,7 +234,7 @@
   (interactive)
   (grc-show-item (grc-get-current-item)))
 
-(Defvar grc-list-mode-map
+(defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-list-help)
     (define-key map "q" 'grc-kill-this-buffer)
