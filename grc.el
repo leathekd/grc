@@ -1,8 +1,6 @@
-;; TODO: Add (unread) (starred) etc to view
-;;       when show or view-external, mark as read, update view
 ;; TODO: requests need to be much more async.  It's unacceptable to
 ;;       freeze emacs when fetching feeds
-
+;; TODO: investigate other ways of refreshing view (delete lines, etc)
 
 (require 'cl)
 (require 'html2text)
@@ -22,39 +20,33 @@
                                            "&xt=user/-/state/com.google/read")))
     (greader-reading-list)))
 
-(defun grc-send-request (data)
+(defun grc-send-request (request)
   (declare (special g-curl-program g-curl-common-options
                     greader-auth-handle))
   (g-auth-ensure-token greader-auth-handle)
   (g-using-scratch
    (shell-command
-    (format
-     "%s %s %s  -X POST -d '%s' '%s' "
-     g-curl-program g-curl-common-options
-     (g-authorization greader-auth-handle)
-     data
-     "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client")
+    (format "%s %s %s  -X POST -d '%s' '%s' "
+            g-curl-program g-curl-common-options
+            (g-authorization greader-auth-handle)
+            request
+            "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client")
     (current-buffer))
    (goto-char (point-min))
    (cond
     ((looking-at "OK") (message "OK"))
-    (t (error "Error %s: " data)))))
+    (t (error "Error %s: " request)))))
 
-(defun grc-mark-read (entry)
-  (grc-send-request
-   (format "a=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
-           (aget entry 'feed)
-           (aget entry 'id)
-           (g-auth-token greader-auth-handle))))
+(defun grc-mark-read-request (entry)
+  (format "a=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
+          (aget entry 'feed)
+          (aget entry 'id)
+          (g-auth-token greader-auth-handle)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Request parsing
 (defun grc-xml-get-child (node child-name)
   (car (last (assq child-name node))))
-
-(defun grc-filter (condp lst)
-  (delq nil
-        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
 ;;TODO: figure out why unicode works except in the g-using-scratch buffer...
 (defun grc-strip-html (text)
@@ -71,12 +63,12 @@
 
 (defun grc-extract-categories (entry filter-string)
   (mapcar (lambda (e) (xml-get-attribute e 'label))
-          (grc-filter (lambda (e) (string-match filter-string
-                                           (xml-get-attribute e 'term)))
-                      (xml-get-children entry 'category))))
+          (remove-if-not (lambda (e) (string-match filter-string
+                                              (xml-get-attribute e 'term)))
+                         (xml-get-children entry 'category))))
 
 (defun grc-process-entry (entry)
-  `((id . ,(grc-xml-get-child (first grc-xml-entries) 'id))
+  `((id . ,(grc-xml-get-child entry 'id))
     (title . ,(grc-strip-html (grc-xml-get-child entry 'title)))
     ;; (date . ,(format-time-string
     ;;           "%c"
@@ -124,8 +116,10 @@
                              '("read" "broadcast"
                                "kept-unread" "starred")
                              :test 'string=))
-         (cat-names '(("read" . "Read") ("broadcast" . "Shared")
-                      ("kept-unread" . "Kept Unread") ("starred" . "Starred"))))
+         (cat-names '(("read" . "Read")
+                      ("broadcast" . "Shared")
+                      ("kept-unread" . "Kept Unread")
+                      ("starred" . "Starred"))))
     (if cats
         (concat "("
                 (when labelz (mapconcat 'identity labelz " "))
@@ -162,8 +156,6 @@
             entries)
     ret-list))
 
-;; TODO - sort seems destructive somehow, need to sort up-front and
-;; maintain integrity, rather than always creating a copy to sort...
 (defun grc-sort-by (field entries)
   (let ((sorted (sort (copy-alist entries)
                       (lambda (a b)
@@ -181,6 +173,7 @@
 ;; Main entry function
 (defun grc-reading-list ()
   (interactive)
+  (greader-re-authenticate)
   (let ((buffer (get-buffer-create "*grc list*")))
     (with-current-buffer buffer
       (grc-list-mode)
@@ -230,13 +223,14 @@
           (html2text))))
     (switch-to-buffer buffer)))
 
-;; TODO: add info to the entry that it is marked read update view code
-;; to show this info e.g., date source title (un/read)
-
-(defun grc-mark-read
-  (greader-re-authenticate)
+(defun grc-mark-read (entry)
   (condition-case nil
-      (grc-mark-read entry)
+      (progn
+        (grc-send-request (grc-mark-read-request entry))
+        (let ((mem (member entry grc-entry-cache)))
+          (aput 'entry 'categories
+                (cons "read" (aget entry 'categories t)))
+          (setcar mem entry)))
     (error "There was a problem marking the item as read")))
 
 (defun grc-mark-read-and-remove (entry)
@@ -265,9 +259,14 @@
     (if link
         (progn
           (browse-url link)
-
-          )
+          (grc-mark-read entry)
+          (grc-list-refresh))
       (message "Unable to view this item"))))
+
+(defun grc-list-mark-read ()
+  (interactive)
+  (grc-mark-read (grc-get-current-item))
+  (grc-list-refresh))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
@@ -296,14 +295,18 @@
 
 (defun grc-list-show-item ()
   (interactive)
-  (grc-show-item (grc-get-current-item)))
+  (let ((entry (grc-get-current-item)))
+    (grc-show-item entry)
+    (grc-mark-read entry))
+  (grc-list-refresh))
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-list-help)
     (define-key map "q" 'grc-kill-this-buffer)
     (define-key map "v" 'grc-list-view-external)
-    (define-key map "x" 'grc-list-mark-read-and-remove)
+    (define-key map "r" 'grc-list-mark-read)
+    (define-key map "R" 'grc-list-mark-read-and-remove)
     (define-key map "n" 'grc-list-next-item)
     (define-key map "p" 'grc-list-previous-item)
     (define-key map " " 'grc-advance-or-show-next-item)
