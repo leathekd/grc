@@ -152,8 +152,9 @@
               "Unread)"))))
 
 (defun grc-print-entry (entry)
-  (let ((source (grc-truncate-text (aget entry 'source t) 22 t))
-        (title (aget entry 'title t))
+  (let ((source (grc-truncate-text
+                 (grc-prepare-text (aget entry 'source t)) 22 t))
+        (title (grc-prepare-text (aget entry 'title t)))
         (cats (grc-format-categories entry)))
     (insert
      (format "%-12s   %-25s   %s%s\n"
