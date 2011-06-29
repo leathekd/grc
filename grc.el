@@ -1,14 +1,29 @@
+;; TODO: Refactor: the code has gotten a bit muddled and hard to follow
 ;; TODO: requests need to be much more async.  It's unacceptable to
-;;       freeze emacs when fetching feeds
+;;       freeze emacs when fetching feeds -
+;;       start-process-shell-command and sentinels?
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
+;;       for refreshing a line - modify entry, delete line, redraw
+;; TODO: mark unread, star, unstar, share(?), email(?)
+;;       (greader-star)?
+;; TODO: investigate what it would take to remove reliance on g-client
+;; TODO: streamline processing- print whole buffer and colorize it
+;;       once, strip html once, etc
 
 (require 'cl)
 (require 'html2text)
-
-;; greader-star
+(require 'grc-highlight)
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; General purpose functions
+(defun grc-list (thing)
+  "Return THING if THING is a list, or a list with THING as its element."
+  (if (listp thing)
+      thing
+    (list thing)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
@@ -17,7 +32,8 @@
   (let ((g-atom-view-xsl nil)
         (g-html-handler `grc-parse-response)
         (greader-state-url-pattern (concat greader-state-url-pattern
-                                           "&xt=user/-/state/com.google/read")))
+                                           "&xt=user/-/state/com.google/read"))
+        (greader-number-of-articles 100))
     (greader-reading-list)))
 
 (defun grc-send-request (request)
@@ -49,10 +65,13 @@
   (car (last (assq child-name node))))
 
 ;;TODO: figure out why unicode works except in the g-using-scratch buffer...
-(defun grc-strip-html (text)
+(defun grc-prepare-text (text &optional keywords)
   (when text
     (g-using-scratch
      (insert text)
+
+     (when keywords
+       (grc-highlight-keywords keywords))
 
      ;; There must be a better way...
      (html2text-replace-string "’" "'" (point-min) (point-max))
@@ -68,23 +87,16 @@
                          (xml-get-children entry 'category))))
 
 (defun grc-process-entry (entry)
-  `((id . ,(grc-xml-get-child entry 'id))
-    (title . ,(grc-strip-html (grc-xml-get-child entry 'title)))
-    ;; (date . ,(format-time-string
-    ;;           "%c"
-    ;;           (seconds-to-time
-    ;;            (/ (string-to-int (xml-get-attribute entry
-    ;;                                               'gr:crawl-timestamp-msec))
-    ;;               1000))))
-    (date . ,(grc-xml-get-child entry 'published))
-    (link . ,(xml-get-attribute (assq 'link entry) 'href))
-    (source . ,(grc-strip-html (grc-xml-get-child
-                                (first (xml-get-children entry 'source))
-                                'title)))
-    (feed . ,(xml-get-attribute (assq 'source entry) 'gr:stream-id))
-    (summary . ,(grc-xml-get-child entry 'summary))
-    (content . ,(grc-xml-get-child entry 'content))
-    (label . ,(grc-extract-categories entry "label"))
+  `((id         . ,(grc-xml-get-child entry 'id))
+    (title      . ,(grc-xml-get-child entry 'title))
+    (date       . ,(grc-xml-get-child entry 'published))
+    (link       . ,(xml-get-attribute (assq 'link entry) 'href))
+    (source     . ,(grc-xml-get-child (first (xml-get-children entry 'source))
+                                      'title))
+    (feed       . ,(xml-get-attribute (assq 'source entry) 'gr:stream-id))
+    (summary    . ,(grc-xml-get-child entry 'summary))
+    (content    . ,(grc-xml-get-child entry 'content))
+    (label      . ,(grc-extract-categories entry "label"))
     (categories . ,(grc-extract-categories entry "state"))))
 
 (defun grc-parse-response (buffer)
@@ -109,22 +121,25 @@
           str))
     ""))
 
+(defun grc-transform-category (category)
+  (let ((cat-names '(("read" . "Read")
+                     ("broadcast" . "Shared")
+                     ("kept-unread" . "Kept Unread")
+                     ("starred" . "Starred"))))
+    (or (aget cat-names category t) category)))
+
 (defun grc-format-categories (entry)
   (let* ((labelz (aget entry 'label t))
          (categories (aget entry 'categories t))
          (cats (intersection categories
                              '("read" "broadcast"
                                "kept-unread" "starred")
-                             :test 'string=))
-         (cat-names '(("read" . "Read")
-                      ("broadcast" . "Shared")
-                      ("kept-unread" . "Kept Unread")
-                      ("starred" . "Starred"))))
+                             :test 'string=)))
     (if cats
         (concat "("
                 (when labelz (mapconcat 'identity labelz " "))
                 (when labelz " ")
-                (mapconcat (apply-partially 'aget cat-names) cats " ")
+                (mapconcat 'grc-transform-category cats " ")
                 ")")
       (concat "("
               (when labelz (mapconcat 'identity labelz " "))
@@ -132,16 +147,23 @@
               "Unread)"))))
 
 (defun grc-print-entry (entry)
-  (insert
-   (format "%-12s    %-25s   %s%s\n"
-           (format-time-string "%a %l:%M %p"
-                               (date-to-time (aget entry 'date t)))
-           (grc-truncate-text (aget entry 'source t) 22 t)
-           (aget entry 'title t)
-           (if (or (< 0 (length (aget entry 'categories)))
-                   (< 0 (length (aget entry 'labels))))
-               (format " %s" (grc-format-categories entry))
-             ""))))
+  (let ((source (grc-prepare-text (aget entry 'source t)
+                                  (grc-list (aget entry 'source t))))
+        (title (grc-prepare-text (aget entry 'title t)))
+        (cats (grc-prepare-text (grc-format-categories entry)
+                                (mapcar 'grc-transform-category
+                                        (append (aget entry 'categories t)
+                                                (aget entry 'label t))))))
+    (insert
+     (format "%-12s    %-25s   %s%s\n"
+             (format-time-string "%a %l:%M %p"
+                                 (date-to-time (aget entry 'date t)))
+             (grc-truncate-text source 22 t)
+             title
+             (if (or (< 0 (length (aget entry 'categories)))
+                     (< 0 (length (aget entry 'labels))))
+                 (format " %s" cats)
+               "")))))
 
 (defun grc-group-by (field entries)
   (let* ((groups (remq nil (remove-duplicates
@@ -227,18 +249,28 @@
   (condition-case nil
       (progn
         (grc-send-request (grc-mark-read-request entry))
-        (let ((mem (member entry grc-entry-cache)))
-          (aput 'entry 'categories
-                (cons "read" (aget entry 'categories t)))
-          (setcar mem entry)))
+        (let ((mem (member entry grc-entry-cache))
+              (new-entry (aput 'entry 'categories
+                               (cons "read" (aget entry 'categories t)))))
+          (setcar mem new-entry)
+          new-entry))
     (error "There was a problem marking the item as read")))
 
 (defun grc-mark-read-and-remove (entry)
-  (grc-mark-read entry)
-  (delete entry grc-entry-cache))
+  (delete (grc-mark-read entry) grc-entry-cache))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
+(defun grc-list-next-item ()
+  (interactive)
+  (with-current-buffer (get-buffer "*grc list*")
+    (grc-next-item)))
+
+(defun grc-list-previous-item ()
+  (interactive)
+  (with-current-buffer (get-buffer "*grc list*")
+    (grc-previous-item)))
+
 (defun grc-list-refresh ()
   (with-current-buffer (get-buffer "*grc list*")
     (let ((line (line-number-at-pos)))
@@ -266,22 +298,13 @@
 (defun grc-list-mark-read ()
   (interactive)
   (grc-mark-read (grc-get-current-item))
-  (grc-list-refresh))
+  (grc-list-refresh)
+  (grc-list-next-item))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
   (grc-mark-read-and-remove (grc-get-current-item))
   (grc-list-refresh))
-
-(defun grc-list-next-item ()
-  (interactive)
-  (with-current-buffer (get-buffer "*grc list*")
-    (grc-next-item)))
-
-(defun grc-list-previous-item ()
-  (interactive)
-  (with-current-buffer (get-buffer "*grc list*")
-    (grc-previous-item)))
 
 (defun grc-advance-or-show-next-item ()
   ;;TODO - handle when we're out of items
@@ -306,7 +329,7 @@
     (define-key map "q" 'grc-kill-this-buffer)
     (define-key map "v" 'grc-list-view-external)
     (define-key map "r" 'grc-list-mark-read)
-    (define-key map "R" 'grc-list-mark-read-and-remove)
+    (define-key map "x" 'grc-list-mark-read-and-remove)
     (define-key map "n" 'grc-list-next-item)
     (define-key map "p" 'grc-list-previous-item)
     (define-key map " " 'grc-advance-or-show-next-item)
@@ -331,8 +354,8 @@ All currently available key bindings:
         mode-name "grc-list")
   (setq buffer-read-only t))
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; View mode functions
 (defvar grc-view-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-help)
