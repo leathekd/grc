@@ -60,8 +60,8 @@ twelve digits of the MD5 message digest of the nickname as
 color (#rrrrggggbbbb)."
   (with-syntax-table grc-button-syntax-table
     (let (bounds word color new-kw-face kw)
-      (goto-char (point-min))
       (while keywords
+        (goto-char (point-min))
         (setq kw (car keywords))
         (while (search-forward kw nil t)
           (setq bounds `(,(point) . ,(- (point) (length kw))))

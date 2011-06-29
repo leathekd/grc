@@ -25,6 +25,11 @@
       thing
     (list thing)))
 
+(defun grc-flatten (x)
+  (cond ((null x) nil)
+        ((listp x) (append (grc-flatten (car x)) (grc-flatten (cdr x))))
+        (t (list x))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
 (defun grc-remote-entries ()
@@ -147,18 +152,14 @@
               "Unread)"))))
 
 (defun grc-print-entry (entry)
-  (let ((source (grc-prepare-text (aget entry 'source t)
-                                  (grc-list (aget entry 'source t))))
-        (title (grc-prepare-text (aget entry 'title t)))
-        (cats (grc-prepare-text (grc-format-categories entry)
-                                (mapcar 'grc-transform-category
-                                        (append (aget entry 'categories t)
-                                                (aget entry 'label t))))))
+  (let ((source (grc-truncate-text (aget entry 'source t) 22 t))
+        (title (aget entry 'title t))
+        (cats (grc-format-categories entry)))
     (insert
-     (format "%-12s    %-25s   %s%s\n"
+     (format "%-12s   %-25s   %s%s\n"
              (format-time-string "%a %l:%M %p"
                                  (date-to-time (aget entry 'date t)))
-             (grc-truncate-text source 22 t)
+             source
              title
              (if (or (< 0 (length (aget entry 'categories)))
                      (< 0 (length (aget entry 'labels))))
@@ -190,7 +191,16 @@
 (defun grc-display-list (entries)
   (let ((inhibit-read-only t))
     (erase-buffer)
-    (mapcar 'grc-print-entry entries)))
+    (mapcar 'grc-print-entry entries)
+    (let ((keywords
+           (delete-dups
+            (append (grc-flatten (mapcar (lambda (e) (aget e 'categories t))
+                                         entries))
+                    (grc-flatten (mapcar (lambda (e) (aget e 'label t))
+                                         entries))
+                    (mapcar (lambda (e) (grc-truncate-text
+                                    (aget e 'source) 22 t)) entries)))))
+      (grc-highlight-keywords keywords))))
 
 ;; Main entry function
 (defun grc-reading-list ()
