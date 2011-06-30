@@ -1,14 +1,23 @@
-;; TODO: Refactor: the code has gotten a bit muddled and hard to follow
+
+;; general
+;; TODO: utf8/unicode characters aren't working - coding system?
+;; TODO: investigate what it would take to remove reliance on g-client
 ;; TODO: requests need to be much more async.  It's unacceptable to
 ;;       freeze emacs when fetching feeds -
 ;;       start-process-shell-command and sentinels?
-;; TODO: investigate other ways of refreshing view (delete lines, etc)
-;;       for refreshing a line - modify entry, delete line, redraw
+
+;; both list and show
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
-;; TODO: investigate what it would take to remove reliance on g-client
-;; TODO: streamline processing- print whole buffer and colorize it
-;;       once, strip html once, etc
+;; TODO: Try to keep the show and list views in sync
+
+;; List view
+;; TODO: investigate other ways of refreshing view (delete lines, etc)
+;;       for refreshing a line - modify entry, delete line, redraw
+;; TODO: grc-list-refresh should take an entry
+
+;; Show view
+;; TODO:
 
 (require 'cl)
 (require 'html2text)
@@ -16,6 +25,8 @@
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
+(defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+(defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General purpose functions
@@ -45,7 +56,7 @@
   (declare (special g-curl-program g-curl-common-options
                     greader-auth-handle))
   (g-auth-ensure-token greader-auth-handle)
-  (g-using-scratch
+  (with-temp-buffer
    (shell-command
     (format "%s %s %s  -X POST -d '%s' '%s' "
             g-curl-program g-curl-common-options
@@ -69,40 +80,24 @@
 (defun grc-xml-get-child (node child-name)
   (car (last (assq child-name node))))
 
-;;TODO: figure out why unicode works except in the g-using-scratch buffer...
-(defun grc-prepare-text (text &optional keywords)
-  (when text
-    (g-using-scratch
-     (insert text)
-
-     (when keywords
-       (grc-highlight-keywords keywords))
-
-     ;; There must be a better way...
-     (html2text-replace-string "’" "'" (point-min) (point-max))
-     (html2text-replace-string "–" "--" (point-min) (point-max))
-     (html2text-replace-string "—" "--" (point-min) (point-max))
-     (html2text)
-     (buffer-substring (point-min) (point-max)))))
-
-(defun grc-extract-categories (entry filter-string)
+(defun grc-extract-categories (xml-entry filter-string)
   (mapcar (lambda (e) (xml-get-attribute e 'label))
           (remove-if-not (lambda (e) (string-match filter-string
                                               (xml-get-attribute e 'term)))
-                         (xml-get-children entry 'category))))
+                         (xml-get-children xml-entry 'category))))
 
-(defun grc-process-entry (entry)
-  `((id         . ,(grc-xml-get-child entry 'id))
-    (title      . ,(grc-xml-get-child entry 'title))
-    (date       . ,(grc-xml-get-child entry 'published))
-    (link       . ,(xml-get-attribute (assq 'link entry) 'href))
-    (source     . ,(grc-xml-get-child (first (xml-get-children entry 'source))
-                                      'title))
-    (feed       . ,(xml-get-attribute (assq 'source entry) 'gr:stream-id))
-    (summary    . ,(grc-xml-get-child entry 'summary))
-    (content    . ,(grc-xml-get-child entry 'content))
-    (label      . ,(grc-extract-categories entry "label"))
-    (categories . ,(grc-extract-categories entry "state"))))
+(defun grc-process-entry (xml-entry)
+  `((id         . ,(grc-xml-get-child xml-entry 'id))
+    (title      . ,(grc-xml-get-child xml-entry 'title))
+    (date       . ,(grc-xml-get-child xml-entry 'published))
+    (link       . ,(xml-get-attribute (assq 'link xml-entry) 'href))
+    (source     . ,(grc-xml-get-child
+                    (first (xml-get-children xml-entry 'source)) 'title))
+    (feed       . ,(xml-get-attribute (assq 'source xml-entry) 'gr:stream-id))
+    (summary    . ,(grc-xml-get-child xml-entry 'summary))
+    (content    . ,(grc-xml-get-child xml-entry 'content))
+    (label      . ,(grc-extract-categories xml-entry "label"))
+    (categories . ,(grc-extract-categories xml-entry "state"))))
 
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
@@ -113,6 +108,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
+(defun grc-prepare-text (text)
+  (when (and nil text)
+    (with-temp-buffer
+     (insert text)
+
+     ;; There must be a better way...
+     (html2text-replace-string "’" "'" (point-min) (point-max))
+     (html2text-replace-string "–" "--" (point-min) (point-max))
+     (html2text-replace-string "—" "--" (point-min) (point-max))
+     (html2text)
+     (buffer-substring (point-min) (point-max))))
+  text)
+
 (defun grc-truncate-text (text &optional max elide)
   (if text
       (let* ((max (or max 20))
@@ -141,17 +149,15 @@
                                "kept-unread" "starred")
                              :test 'string=)))
     (if cats
-        (concat "("
-                (when labelz (mapconcat 'identity labelz " "))
+        (concat (when labelz (mapconcat 'identity labelz " "))
                 (when labelz " ")
-                (mapconcat 'grc-transform-category cats " ")
-                ")")
-      (concat "("
-              (when labelz (mapconcat 'identity labelz " "))
+                (mapconcat 'grc-transform-category cats " "))
+      (concat (when labelz (mapconcat 'identity labelz " "))
               (when labelz " ")
-              "Unread)"))))
+              "Unread"))))
 
 (defun grc-print-entry (entry)
+  "Takes an entry and formats it into the line that'll appear on the list view"
   (let ((source (grc-truncate-text
                  (grc-prepare-text (aget entry 'source t)) 22 t))
         (title (grc-prepare-text (aget entry 'title t)))
@@ -164,7 +170,7 @@
              title
              (if (or (< 0 (length (aget entry 'categories)))
                      (< 0 (length (aget entry 'labels))))
-                 (format " %s" cats)
+                 (format " (%s)" cats)
                "")))))
 
 (defun grc-group-by (field entries)
@@ -201,13 +207,14 @@
                                          entries))
                     (mapcar (lambda (e) (grc-truncate-text
                                     (aget e 'source) 22 t)) entries)))))
-      (grc-highlight-keywords keywords))))
+      (grc-highlight-keywords keywords))
+    (goto-char (point-min))))
 
 ;; Main entry function
 (defun grc-reading-list ()
   (interactive)
   (greader-re-authenticate)
-  (let ((buffer (get-buffer-create "*grc list*")))
+  (let ((buffer (get-buffer-create grc-list-buffer)))
     (with-current-buffer buffer
       (grc-list-mode)
       (grc-display-list (grc-remote-entries))
@@ -215,11 +222,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
-(defun grc-get-current-item ()
-  "utility function to get the item from the current line in list view"
-  (with-current-buffer (get-buffer "*grc list*")
-    (nth (- (line-number-at-pos) 1) grc-entry-cache)))
-
 (defun grc-next-item ()
   (interactive)
   (next-line)
@@ -235,12 +237,12 @@
   (interactive)
   (kill-buffer (current-buffer)))
 
-(defun grc-show-item (entry)
+(defun grc-show-entry (entry)
   ;; save entry as grc-current-entry
   (setq grc-current-entry entry)
-  (let ((buffer (get-buffer-create "*grc show*")))
+  (let ((buffer (get-buffer-create grc-show-buffer)))
     (with-current-buffer buffer
-      (grc-view-mode)
+      (grc-show-mode)
       (let ((inhibit-read-only t)
             (summary (or (aget entry 'content t)
                          (aget entry 'summary t)
@@ -254,40 +256,53 @@
         (if (featurep 'w3m)
             (w3m-buffer)
           (html2text))))
+    (grc-mark-read entry)
     (switch-to-buffer buffer)))
 
 (defun grc-mark-read (entry)
-  (condition-case nil
-      (progn
-        (grc-send-request (grc-mark-read-request entry))
-        (let ((mem (member entry grc-entry-cache))
-              (new-entry (aput 'entry 'categories
-                               (cons "read" (aget entry 'categories t)))))
-          (setcar mem new-entry)
-          new-entry))
-    (error "There was a problem marking the item as read")))
+  (when nil ;;TODO: remove when done testing
+    (condition-case nil
+        (progn
+          (grc-send-request (grc-mark-read-request entry))
+          (let ((mem (member entry grc-entry-cache))
+                (new-entry (aput 'entry 'categories
+                                 (cons "read" (aget entry 'categories t)))))
+            (setcar mem new-entry)
+            new-entry))
+      (error "There was a problem marking the item as read"))))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
 
+(defun grc-view-external (entry)
+  "Open the current rss entry in the default emacs browser"
+  (interactive)
+  (let ((link (aget entry 'link t)))
+    (if link
+        (progn
+          (browse-url link)
+          (grc-mark-read entry))
+      (message "Unable to view this item"))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
+(defun grc-list-get-current-item ()
+  "utility function to get the item from the current line in list view"
+  (nth (- (line-number-at-pos) 1) grc-entry-cache))
+
 (defun grc-list-next-item ()
   (interactive)
-  (with-current-buffer (get-buffer "*grc list*")
-    (grc-next-item)))
+  (grc-next-item))
 
 (defun grc-list-previous-item ()
   (interactive)
-  (with-current-buffer (get-buffer "*grc list*")
-    (grc-previous-item)))
+  (grc-previous-item))
 
 (defun grc-list-refresh ()
-  (with-current-buffer (get-buffer "*grc list*")
-    (let ((line (line-number-at-pos)))
-      (grc-display-list grc-entry-cache)
-      (goto-line line)
-      (beginning-of-line))))
+  (let ((line (line-number-at-pos)))
+    (grc-display-list grc-entry-cache)
+    (goto-line line)
+    (beginning-of-line)))
 
 (defun grc-list-help ()
   ;;TODO
@@ -297,42 +312,23 @@
 (defun grc-list-view-external ()
   "Open the current rss entry in the default emacs browser"
   (interactive)
-  (let* ((entry (grc-get-current-item))
-         (link (aget entry 'link t)))
-    (if link
-        (progn
-          (browse-url link)
-          (grc-mark-read entry)
-          (grc-list-refresh))
-      (message "Unable to view this item"))))
+  (grc-view-external (grc-list-get-current-item))
+  (grc-list-refresh))
 
 (defun grc-list-mark-read ()
   (interactive)
-  (grc-mark-read (grc-get-current-item))
+  (grc-mark-read (grc-list-get-current-item))
   (grc-list-refresh)
   (grc-list-next-item))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
-  (grc-mark-read-and-remove (grc-get-current-item))
+  (grc-mark-read-and-remove (grc-list-get-current-item))
   (grc-list-refresh))
 
-(defun grc-advance-or-show-next-item ()
-  ;;TODO - handle when we're out of items
+(defun grc-list-show-entry ()
   (interactive)
-  ;; check to see if we're on the list page
-  (condition-case nil
-      (scroll-up-command)
-    (progn
-      (grc-list-next-item)
-      (grc-show-item))))
-
-(defun grc-list-show-item ()
-  (interactive)
-  (let ((entry (grc-get-current-item)))
-    (grc-show-item entry)
-    (grc-mark-read entry))
-  (grc-list-refresh))
+  (grc-show-entry (grc-list-get-current-item)))
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
@@ -343,8 +339,8 @@
     (define-key map "x" 'grc-list-mark-read-and-remove)
     (define-key map "n" 'grc-list-next-item)
     (define-key map "p" 'grc-list-previous-item)
-    (define-key map " " 'grc-advance-or-show-next-item)
-    (define-key map (kbd "RET") 'grc-list-show-item)
+    (define-key map " " 'grc-list-show-entry)
+    (define-key map (kbd "RET") 'grc-list-show-entry)
     map)
   "Keymap for \"grc list\" buffers.")
 (fset 'grc-list-mode-map grc-list-mode-map)
@@ -367,28 +363,66 @@ All currently available key bindings:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; View mode functions
-(defvar grc-view-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "?" 'grc-help)
-    (define-key map "q" 'grc-kill-this-buffer)
-    (define-key map "v" 'grc-view-external)
-    (define-key map "n" 'grc-next-item)
-    (define-key map "p" 'grc-previous-item)
-    (define-key map " " 'grc-advance-or-show-next-item)
-    (define-key map (kbd "RET") 'grc-show-item)
-    map)
-  "Keymap for \"grc view\" buffers.")
-(fset 'grc-view-mode-map grc-view-mode-map)
+(defun grc-show-help ()
+  ;;TODO
+  (interactive)
+  )
 
-(defun grc-view-mode ()
+(defun grc-show-kill-this-buffer ()
+  (interactive)
+  (grc-kill-this-buffer)
+  (if (get-buffer grc-list-buffer)
+      (show-buffer (get-buffer grc-list-buffer))))
+
+(defun grc-show-next-item ()
+  (interactive)
+  (let ((entry (cadr (member grc-current-entry grc-entry-cache))))
+    (if entry
+        (grc-show-entry entry)
+      (error "No more entries"))))
+
+(defun grc-show-previous-item ()
+  (interactive)
+  (let ((entry (cadr (member grc-current-entry (reverse grc-entry-cache)))))
+    (if entry
+        (grc-show-entry entry)
+        (error "No more entries"))))
+
+(defun grc-show-view-external ()
+  (grc-view-external grc-current-entry))
+
+(defun grc-show-advance-or-show-next-item ()
+  ;;TODO - handle when we're out of items
+  (interactive)
+  ;; check to see if we're on the list page
+  (if (eobp)
+      (grc-show-next-item)
+    (let ((scroll-error-top-bottom t))
+      (scroll-up-command 25))))
+
+(defvar grc-show-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "?" 'grc-show-help)
+    (define-key map "q" 'grc-show-kill-this-buffer)
+    (define-key map "v" 'grc-show-view-external)
+    (define-key map "n" 'grc-show-next-item)
+    (define-key map "p" 'grc-show-previous-item)
+    (define-key map " " 'grc-show-advance-or-show-next-item)
+    (when (featurep 'w3m)
+      (define-key map (kbd "TAB") 'w3m-next-anchor))
+    map)
+  "Keymap for \"grc show\" buffers.")
+(fset 'grc-show-mode-map grc-show-mode-map)
+
+(defun grc-show-mode ()
   "Major mode for viewing a feed entry in grc
 
-\\{grc-view-mode-map}"
+\\{grc-show-mode-map}"
   (interactive)
   (kill-all-local-variables)
-  (use-local-map grc-view-mode-map)
-  (setq major-mode 'grc-view-mode
-        mode-name "grc-view")
+  (use-local-map grc-show-mode-map)
+  (setq major-mode 'grc-show-mode
+        mode-name "grc-show")
   (setq buffer-read-only t)
   (when (featurep 'w3m)
     (setq w3m-display-inline-images t)))
