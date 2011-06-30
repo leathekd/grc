@@ -9,24 +9,46 @@
 ;; both list and show
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
-;; TODO: Try to keep the show and list views in sync
+;; TODO: Shared items aren't marked as unread
 
 ;; List view
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
-;; TODO: grc-list-refresh should take an entry
+;; TODO: grc-list-refresh should take an entry.  Maybe?
+;; TODO: sorting/grouping list view
+;; TODO: adding note - edit w/ snippet=note
+;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
+;; TODO: all feeds, not just unread
+;; TODO: search
+;; TODO: emailing, sharing
 
 ;; Show view
-;; TODO:
+;; TODO: Try to keep the show and list views in sync
 
 (require 'cl)
 (require 'html2text)
-(require 'grc-highlight)
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
+
+(defgroup grc nil "Google Reader Client for Emacs")
+(defcustom grc-enable-hl-line t
+  "Turn on hl-line-mode in the grc list buffer"
+  :type  'boolean
+  :group 'grc)
+
+(defface grc-highlight-nick-base-face
+  '((t nil))
+  "Base face used for highlighting nicks in erc. (Before the nick
+color is added)"
+  :group 'grc-faces)
+
+(defvar grc-highlight-face-table
+  (make-hash-table :test 'equal)
+  "The hash table that contains unique grc faces.")
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General purpose functions
@@ -105,6 +127,58 @@
          (entries (grc-sort-by 'date (mapcar 'grc-process-entry xml-entries))))
     (setq grc-xml-entries xml-entries)
     entries))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Highlighting keywords
+(defun grc-hexcolor-luminance (color)
+  "Returns the luminance of color COLOR. COLOR is a string \(e.g.
+\"#ffaa00\", \"blue\"\) `color-values' accepts. Luminance is a
+value of 0.299 red + 0.587 green + 0.114 blue and is always
+between 0 and 255."
+  (let* ((values (x-color-values color))
+         (r (car values))
+         (g (car (cdr values)))
+         (b (car (cdr (cdr values)))))
+    (floor (+ (* 0.299 r) (* 0.587 g) (* 0.114 b)) 256)))
+
+(defun grc-invert-color (color)
+  "Returns the inverted color of COLOR."
+  (let* ((values (x-color-values color))
+         (r (car values))
+         (g (car (cdr values)))
+         (b (car (cdr (cdr values)))))
+    (format "#%04x%04x%04x"
+            (- 65535 r) (- 65535 g) (- 65535 b))))
+
+;;;###autoload
+(defun grc-highlight-keywords (keywords)
+  "Searches for nicknames and highlights them. Uses the first
+twelve digits of the MD5 message digest of the nickname as
+color (#rrrrggggbbbb)."
+  (let (bounds word color new-kw-face kw)
+    (while keywords
+      (goto-char (point-min))
+      (setq kw (car keywords))
+      (while (search-forward kw nil t)
+        (setq bounds `(,(point) . ,(- (point) (length kw))))
+        (setq word (buffer-substring-no-properties
+                    (car bounds) (cdr bounds)))
+        (setq new-kw-face (gethash word grc-highlight-face-table))
+        (unless nil ;;new-kw-face
+          (setq color (concat "#" (substring (md5 (downcase word)) 0 12)))
+          (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
+              ;; if too dark for background
+              (when (< (grc-hexcolor-luminance color) 85)
+                (setq color (grc-invert-color color)))
+            ;; if to bright for background
+            (when (> (grc-hexcolor-luminance color) 170)
+              (setq color (grc-invert-color color))))
+          (setq new-kw-face (make-symbol (concat "grc-highlight-nick-" word "-face")))
+          (copy-face 'grc-highlight-nick-base-face new-kw-face)
+          (set-face-foreground new-kw-face color)
+          (puthash word new-kw-face grc-highlight-face-table))
+        (put-text-property (car bounds) (cdr bounds) 'face new-kw-face))
+      (setq keywords (cdr keywords)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -207,8 +281,7 @@
                                          entries))
                     (mapcar (lambda (e) (grc-truncate-text
                                     (aget e 'source) 22 t)) entries)))))
-      (grc-highlight-keywords keywords))
-    (goto-char (point-min))))
+      (grc-highlight-keywords keywords))))
 
 ;; Main entry function
 (defun grc-reading-list ()
@@ -218,24 +291,19 @@
     (with-current-buffer buffer
       (grc-list-mode)
       (grc-display-list (grc-remote-entries))
+      (goto-char (point-min))
       (switch-to-buffer buffer))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
-(defun grc-next-item ()
-  (interactive)
-  (next-line)
-  (move-beginning-of-line nil))
-
-(defun grc-previous-item ()
-  (interactive)
-  (previous-line)
-  (move-beginning-of-line nil))
-
 (defun grc-kill-this-buffer ()
   "Kill the current buffer."
   (interactive)
   (kill-buffer (current-buffer)))
+
+(defun grc-entry-index (entry)
+  (- (length grc-entry-cache)
+     (length (member entry grc-entry-cache))))
 
 (defun grc-show-entry (entry)
   ;; save entry as grc-current-entry
@@ -269,7 +337,7 @@
                                  (cons "read" (aget entry 'categories t)))))
             (setcar mem new-entry)
             new-entry))
-      (error "There was a problem marking the item as read"))))
+      (error "There was a problem marking the entry as read"))))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
@@ -282,27 +350,30 @@
         (progn
           (browse-url link)
           (grc-mark-read entry))
-      (message "Unable to view this item"))))
+      (message "Unable to view this entry"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
-(defun grc-list-get-current-item ()
-  "utility function to get the item from the current line in list view"
+(defun grc-list-get-current-entry ()
+  "utility function to get the entry from the current line in list view"
   (nth (- (line-number-at-pos) 1) grc-entry-cache))
 
-(defun grc-list-next-item ()
+(defun grc-list-next-entry ()
   (interactive)
-  (grc-next-item))
+  (next-line)
+  (move-beginning-of-line nil))
 
-(defun grc-list-previous-item ()
+(defun grc-list-previous-entry ()
   (interactive)
-  (grc-previous-item))
+  (previous-line)
+  (move-beginning-of-line nil))
 
-(defun grc-list-refresh ()
-  (let ((line (line-number-at-pos)))
-    (grc-display-list grc-entry-cache)
-    (goto-line line)
-    (beginning-of-line)))
+(defun grc-list-refresh (&optional ln)
+  (with-current-buffer (get-buffer-create grc-list-buffer)
+    (let ((line (or ln (line-number-at-pos))))
+      (grc-display-list grc-entry-cache)
+      (goto-line line)
+      (beginning-of-line))))
 
 (defun grc-list-help ()
   ;;TODO
@@ -312,23 +383,23 @@
 (defun grc-list-view-external ()
   "Open the current rss entry in the default emacs browser"
   (interactive)
-  (grc-view-external (grc-list-get-current-item))
+  (grc-view-external (grc-list-get-current-entry))
   (grc-list-refresh))
 
 (defun grc-list-mark-read ()
   (interactive)
-  (grc-mark-read (grc-list-get-current-item))
-  (grc-list-refresh)
-  (grc-list-next-item))
+  (grc-mark-read (grc-list-get-current-entry))
+  (grc-list-next-entry)
+  (grc-list-refresh))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
-  (grc-mark-read-and-remove (grc-list-get-current-item))
+  (grc-mark-read-and-remove (grc-list-get-current-entry))
   (grc-list-refresh))
 
 (defun grc-list-show-entry ()
   (interactive)
-  (grc-show-entry (grc-list-get-current-item)))
+  (grc-show-entry (grc-list-get-current-entry)))
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
@@ -337,9 +408,10 @@
     (define-key map "v" 'grc-list-view-external)
     (define-key map "r" 'grc-list-mark-read)
     (define-key map "x" 'grc-list-mark-read-and-remove)
-    (define-key map "n" 'grc-list-next-item)
-    (define-key map "p" 'grc-list-previous-item)
+    (define-key map "n" 'grc-list-next-entry)
+    (define-key map "p" 'grc-list-previous-entry)
     (define-key map " " 'grc-list-show-entry)
+    (define-key map "g" 'grc-reading-list)
     (define-key map (kbd "RET") 'grc-list-show-entry)
     map)
   "Keymap for \"grc list\" buffers.")
@@ -359,7 +431,8 @@ All currently available key bindings:
   (use-local-map grc-list-mode-map)
   (setq major-mode 'grc-list-mode
         mode-name "grc-list")
-  (setq buffer-read-only t))
+  (setq buffer-read-only t)
+  (hl-line-mode grc-enable-hl-line))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; View mode functions
@@ -372,31 +445,35 @@ All currently available key bindings:
   (interactive)
   (grc-kill-this-buffer)
   (if (get-buffer grc-list-buffer)
-      (show-buffer (get-buffer grc-list-buffer))))
+      (switch-to-buffer (get-buffer grc-list-buffer))))
 
-(defun grc-show-next-item ()
+(defun grc-show-next-entry ()
   (interactive)
   (let ((entry (cadr (member grc-current-entry grc-entry-cache))))
     (if entry
-        (grc-show-entry entry)
+        (progn
+          (grc-show-entry entry)
+          (grc-list-refresh (grc-entry-index entry)))
       (error "No more entries"))))
 
-(defun grc-show-previous-item ()
+(defun grc-show-previous-entry ()
   (interactive)
   (let ((entry (cadr (member grc-current-entry (reverse grc-entry-cache)))))
     (if entry
-        (grc-show-entry entry)
-        (error "No more entries"))))
+        (progn
+          (grc-show-entry entry)
+          (grc-list-refresh (grc-entry-index entry)))
+        (error "No previous entries"))))
 
 (defun grc-show-view-external ()
   (grc-view-external grc-current-entry))
 
-(defun grc-show-advance-or-show-next-item ()
-  ;;TODO - handle when we're out of items
+(defun grc-show-advance-or-show-next-entry ()
+  ;;TODO - handle when we're out of entries
   (interactive)
   ;; check to see if we're on the list page
   (if (eobp)
-      (grc-show-next-item)
+      (grc-show-next-entry)
     (let ((scroll-error-top-bottom t))
       (scroll-up-command 25))))
 
@@ -405,9 +482,9 @@ All currently available key bindings:
     (define-key map "?" 'grc-show-help)
     (define-key map "q" 'grc-show-kill-this-buffer)
     (define-key map "v" 'grc-show-view-external)
-    (define-key map "n" 'grc-show-next-item)
-    (define-key map "p" 'grc-show-previous-item)
-    (define-key map " " 'grc-show-advance-or-show-next-item)
+    (define-key map "n" 'grc-show-next-entry)
+    (define-key map "p" 'grc-show-previous-entry)
+    (define-key map " " 'grc-show-advance-or-show-next-entry)
     (when (featurep 'w3m)
       (define-key map (kbd "TAB") 'w3m-next-anchor))
     map)
