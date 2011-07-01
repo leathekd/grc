@@ -131,7 +131,9 @@ color is added)"
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
          (xml-entries (xml-get-children root 'entry))
-         (entries (grc-sort-by 'date (mapcar 'grc-process-entry xml-entries))))
+         (entries (grc-sort-by 'date
+                               (mapcar 'grc-process-entry xml-entries)
+                               t)))
     (setq grc-xml-entries xml-entries)
     entries))
 
@@ -192,7 +194,7 @@ color (#rrrrggggbbbb)."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
 (defun grc-prepare-text (text)
-  (when (and nil text)
+  (when text
     (with-temp-buffer
       (insert text)
 
@@ -201,8 +203,7 @@ color (#rrrrggggbbbb)."
       (html2text-replace-string "–" "--" (point-min) (point-max))
       (html2text-replace-string "—" "--" (point-min) (point-max))
       (html2text)
-      (buffer-substring (point-min) (point-max))))
-  text)
+      (buffer-substring (point-min) (point-max)))))
 
 (defun grc-truncate-text (text &optional max elide)
   (if text
@@ -245,11 +246,17 @@ color (#rrrrggggbbbb)."
   (let ((source (grc-truncate-text
                  (grc-prepare-text (aget entry 'source t)) 25 t))
         (title (grc-prepare-text (aget entry 'title t)))
-        (cats (grc-format-categories entry)))
+        (cats (grc-format-categories entry))
+        (date (date-to-time (aget entry 'date t)))
+        (one-week (- (float-time (current-time))
+                     (* 60 60 24 7))))
     (insert
      (format "%-12s  %-25s  %s%s\n"
-             (format-time-string "%a %l:%M %p"
-                                 (date-to-time (aget entry 'date t)))
+             (format-time-string
+              (if (> one-week (float-time date))
+                  "%m/%d %l:%M %p"
+                "%a %l:%M %p")
+              date)
              source
              title
              (if (< 0 (length (aget entry 'categories)))
@@ -269,12 +276,13 @@ color (#rrrrggggbbbb)."
             entries)
     ret-list))
 
-(defun grc-sort-by (field entries)
-  (let ((sorted (sort (copy-alist entries)
+(defun grc-sort-by (field entries &optional reverse-result)
+  (let* ((sorted (sort (copy-alist entries)
                       (lambda (a b)
                         (string<
                          (aget a field)
-                         (aget b field))))))
+                         (aget b field)))))
+         (sorted (if reverse-result (nreverse sorted) sorted)))
     (setq grc-entry-cache sorted)
     sorted))
 
