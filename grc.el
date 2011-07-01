@@ -1,4 +1,3 @@
-
 ;; general
 ;; TODO: utf8/unicode characters aren't working - coding system?
 ;; TODO: investigate what it would take to remove reliance on g-client
@@ -10,6 +9,8 @@
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
 ;; TODO: Shared items aren't marked as unread
+;; TODO: some categories are highlighting when they shouldn't
+;; TODO: simplify categories - combine cat and label
 
 ;; List view
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
@@ -23,7 +24,7 @@
 ;; TODO: emailing, sharing
 
 ;; Show view
-;; TODO: Try to keep the show and list views in sync
+;; TODO:
 
 (require 'cl)
 (require 'html2text)
@@ -173,7 +174,8 @@ color (#rrrrggggbbbb)."
             ;; if to bright for background
             (when (> (grc-hexcolor-luminance color) 170)
               (setq color (grc-invert-color color))))
-          (setq new-kw-face (make-symbol (concat "grc-highlight-nick-" word "-face")))
+          (setq new-kw-face (make-symbol (concat "grc-highlight-nick-"
+                                                 word "-face")))
           (copy-face 'grc-highlight-nick-base-face new-kw-face)
           (set-face-foreground new-kw-face color)
           (puthash word new-kw-face grc-highlight-face-table))
@@ -372,8 +374,8 @@ color (#rrrrggggbbbb)."
   (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((line (or ln (line-number-at-pos))))
       (grc-display-list grc-entry-cache)
-      (goto-line line)
-      (beginning-of-line))))
+      (goto-char (point-min))
+      (forward-line line))))
 
 (defun grc-list-help ()
   ;;TODO
@@ -435,7 +437,7 @@ All currently available key bindings:
   (hl-line-mode grc-enable-hl-line))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; View mode functions
+;; Show functions
 (defun grc-show-help ()
   ;;TODO
   (interactive)
@@ -443,9 +445,9 @@ All currently available key bindings:
 
 (defun grc-show-kill-this-buffer ()
   (interactive)
-  (grc-kill-this-buffer)
-  (if (get-buffer grc-list-buffer)
-      (switch-to-buffer (get-buffer grc-list-buffer))))
+  (when (get-buffer grc-list-buffer)
+    (switch-to-buffer (get-buffer grc-list-buffer))
+    (kill-buffer grc-show-buffer)))
 
 (defun grc-show-next-entry ()
   (interactive)
@@ -469,9 +471,7 @@ All currently available key bindings:
   (grc-view-external grc-current-entry))
 
 (defun grc-show-advance-or-show-next-entry ()
-  ;;TODO - handle when we're out of entries
   (interactive)
-  ;; check to see if we're on the list page
   (if (eobp)
       (grc-show-next-entry)
     (let ((scroll-error-top-bottom t))
