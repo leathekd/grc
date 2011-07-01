@@ -8,19 +8,16 @@
 ;; both list and show
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
-;; TODO: Shared items aren't marked as unread
-;; TODO: some categories are highlighting when they shouldn't
+;; TODO: adding note - edit w/ snippet=note
+;; TODO: emailing, sharing
 
 ;; List view
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
-;; TODO: grc-list-refresh should take an entry.  Maybe?
 ;; TODO: sorting/grouping list view
-;; TODO: adding note - edit w/ snippet=note
 ;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
 ;; TODO: all feeds, not just unread
 ;; TODO: search
-;; TODO: emailing, sharing
 
 ;; Show view
 ;; TODO:
@@ -211,6 +208,9 @@ color (#rrrrggggbbbb)."
   (if text
       (let* ((max (or max 20))
              (len (length text))
+             (max (if (and elide (< max len))
+                      (- max 3)
+                    max))
              (str (replace-regexp-in-string
                    "\\(\\W\\)*$"
                    ""
@@ -243,11 +243,11 @@ color (#rrrrggggbbbb)."
 (defun grc-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
   (let ((source (grc-truncate-text
-                 (grc-prepare-text (aget entry 'source t)) 22 t))
+                 (grc-prepare-text (aget entry 'source t)) 25 t))
         (title (grc-prepare-text (aget entry 'title t)))
         (cats (grc-format-categories entry)))
     (insert
-     (format "%-12s   %-25s   %s%s\n"
+     (format "%-12s  %-25s  %s%s\n"
              (format-time-string "%a %l:%M %p"
                                  (date-to-time (aget entry 'date t)))
              source
@@ -382,9 +382,9 @@ color (#rrrrggggbbbb)."
   (previous-line)
   (move-beginning-of-line nil))
 
-(defun grc-list-refresh (&optional ln)
-  (with-current-buffer (get-buffer-create grc-list-buffer)
-    (let ((line (or ln (line-number-at-pos))))
+(defun grc-list-refresh ()
+  (with-current-buffer grc-list-buffer
+    (let ((line (1- (line-number-at-pos))))
       (grc-display-list grc-entry-cache)
       (goto-char (point-min))
       (forward-line line))))
@@ -404,7 +404,8 @@ color (#rrrrggggbbbb)."
   (interactive)
   (grc-mark-read (grc-list-get-current-entry))
   (grc-list-next-entry)
-  (grc-list-refresh))
+  (grc-list-refresh)
+  (forward-line))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
@@ -467,7 +468,9 @@ All currently available key bindings:
     (if entry
         (progn
           (grc-show-entry entry)
-          (grc-list-refresh (grc-entry-index entry)))
+          (with-current-buffer grc-list-buffer
+            (grc-list-refresh)
+            (forward-line)))
       (error "No more entries"))))
 
 (defun grc-show-previous-entry ()
@@ -476,7 +479,9 @@ All currently available key bindings:
     (if entry
         (progn
           (grc-show-entry entry)
-          (grc-list-refresh (grc-entry-index entry)))
+          (with-current-buffer grc-list-buffer
+            (grc-list-refresh)
+            (forward-line -1)))
       (error "No previous entries"))))
 
 (defun grc-show-view-external ()
