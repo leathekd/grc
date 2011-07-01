@@ -356,16 +356,15 @@ color (#rrrrggggbbbb)."
     (grc-list-refresh)))
 
 (defun grc-mark-read (entry)
-  (when nil ;;TODO: remove when done testing
-    (condition-case nil
-        (progn
-          (grc-send-request (grc-mark-read-request entry))
-          (let ((mem (member entry grc-entry-cache))
-                (new-entry (aput 'entry 'categories
-                                 (remove "fresh" (aget entry 'categories t)))))
-            (setcar mem new-entry)
-            new-entry))
-      (error "There was a problem marking the entry as read"))))
+  (condition-case nil
+      (progn
+        ;;(grc-send-request (grc-mark-read-request entry))
+        (let ((mem (member entry grc-entry-cache)))
+          (aput 'entry 'categories
+                (remove "fresh" (aget entry 'categories t)))
+          (setcar mem entry)
+          entry))
+    (error "There was a problem marking the entry as read")))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
