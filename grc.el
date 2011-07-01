@@ -10,7 +10,6 @@
 ;;       (greader-star)?
 ;; TODO: Shared items aren't marked as unread
 ;; TODO: some categories are highlighting when they shouldn't
-;; TODO: simplify categories - combine cat and label
 
 ;; List view
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
@@ -80,17 +79,17 @@ color is added)"
                     greader-auth-handle))
   (g-auth-ensure-token greader-auth-handle)
   (with-temp-buffer
-   (shell-command
-    (format "%s %s %s  -X POST -d '%s' '%s' "
-            g-curl-program g-curl-common-options
-            (g-authorization greader-auth-handle)
-            request
-            "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client")
-    (current-buffer))
-   (goto-char (point-min))
-   (cond
-    ((looking-at "OK") (message "OK"))
-    (t (error "Error %s: " request)))))
+    (shell-command
+     (format "%s %s %s  -X POST -d '%s' '%s' "
+             g-curl-program g-curl-common-options
+             (g-authorization greader-auth-handle)
+             request
+             "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client")
+     (current-buffer))
+    (goto-char (point-min))
+    (cond
+     ((looking-at "OK") (message "OK"))
+     (t (error "Error %s: " request)))))
 
 (defun grc-mark-read-request (entry)
   (format "a=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
@@ -103,24 +102,34 @@ color is added)"
 (defun grc-xml-get-child (node child-name)
   (car (last (assq child-name node))))
 
-(defun grc-extract-categories (xml-entry filter-string)
-  (mapcar (lambda (e) (xml-get-attribute e 'label))
-          (remove-if-not (lambda (e) (string-match filter-string
-                                              (xml-get-attribute e 'term)))
-                         (xml-get-children xml-entry 'category))))
+(defun grc-xml-get-categories (xml-entry)
+  (remove-if 'empty-string-p
+             (mapcar (lambda (e) (xml-get-attribute e 'label))
+                     (xml-get-children xml-entry 'category))))
+
+(defun grc-xml-get-source (xml-entry)
+  "Will extract the souce from the xml-entry.  If it is a shared item, it will
+  extract the source from the link with the title X's shared items"
+  (let ((categories (grc-xml-get-categories xml-entry)))
+    (if (or (member "broadcast" categories)
+            (member "broadcast-friends" categories))
+        (let ((link (first
+                     (remove-if-not
+                      (lambda (e) (string= "via" (xml-get-attribute e 'rel)))
+                      (xml-get-children xml-entry 'link)))))
+          (xml-get-attribute link 'title))
+      (grc-xml-get-child (first (xml-get-children xml-entry 'source)) 'title))))
 
 (defun grc-process-entry (xml-entry)
   `((id         . ,(grc-xml-get-child xml-entry 'id))
-    (title      . ,(grc-xml-get-child xml-entry 'title))
     (date       . ,(grc-xml-get-child xml-entry 'published))
+    (title      . ,(grc-xml-get-child xml-entry 'title))
     (link       . ,(xml-get-attribute (assq 'link xml-entry) 'href))
-    (source     . ,(grc-xml-get-child
-                    (first (xml-get-children xml-entry 'source)) 'title))
+    (source     . ,(grc-xml-get-source xml-entry))
     (feed       . ,(xml-get-attribute (assq 'source xml-entry) 'gr:stream-id))
     (summary    . ,(grc-xml-get-child xml-entry 'summary))
     (content    . ,(grc-xml-get-child xml-entry 'content))
-    (label      . ,(grc-extract-categories xml-entry "label"))
-    (categories . ,(grc-extract-categories xml-entry "state"))))
+    (categories . ,(grc-xml-get-categories xml-entry))))
 
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
@@ -156,7 +165,7 @@ between 0 and 255."
   "Searches for nicknames and highlights them. Uses the first
 twelve digits of the MD5 message digest of the nickname as
 color (#rrrrggggbbbb)."
-  (let (bounds word color new-kw-face kw)
+  (let (bounds word color new-kw-face kw (case-fold-search nil))
     (while keywords
       (goto-char (point-min))
       (setq kw (car keywords))
@@ -165,7 +174,7 @@ color (#rrrrggggbbbb)."
         (setq word (buffer-substring-no-properties
                     (car bounds) (cdr bounds)))
         (setq new-kw-face (gethash word grc-highlight-face-table))
-        (unless nil ;;new-kw-face
+        (unless new-kw-face
           (setq color (concat "#" (substring (md5 (downcase word)) 0 12)))
           (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
               ;; if too dark for background
@@ -180,21 +189,22 @@ color (#rrrrggggbbbb)."
           (set-face-foreground new-kw-face color)
           (puthash word new-kw-face grc-highlight-face-table))
         (put-text-property (car bounds) (cdr bounds) 'face new-kw-face))
-      (setq keywords (cdr keywords)))))
+      (setq keywords (cdr keywords))))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
 (defun grc-prepare-text (text)
   (when (and nil text)
     (with-temp-buffer
-     (insert text)
+      (insert text)
 
-     ;; There must be a better way...
-     (html2text-replace-string "’" "'" (point-min) (point-max))
-     (html2text-replace-string "–" "--" (point-min) (point-max))
-     (html2text-replace-string "—" "--" (point-min) (point-max))
-     (html2text)
-     (buffer-substring (point-min) (point-max))))
+      ;; There must be a better way...
+      (html2text-replace-string "’" "'" (point-min) (point-max))
+      (html2text-replace-string "–" "--" (point-min) (point-max))
+      (html2text-replace-string "—" "--" (point-min) (point-max))
+      (html2text)
+      (buffer-substring (point-min) (point-max))))
   text)
 
 (defun grc-truncate-text (text &optional max elide)
@@ -209,28 +219,26 @@ color (#rrrrggggbbbb)."
             (concat str "...")
           str))
     ""))
-
-(defun grc-transform-category (category)
-  (let ((cat-names '(("read" . "Read")
-                     ("broadcast" . "Shared")
-                     ("kept-unread" . "Kept Unread")
-                     ("starred" . "Starred"))))
-    (or (aget cat-names category t) category)))
+;; "list of the categories that google adds to entries"
+(setq grc-google-categories '(("broadcast"         . "Shared")
+                              ("broadcast-friends" . "Shared")
+                              ("fresh"             . "Unread")
+                              ("kept-unread"       . "Kept Unread")
+                              ("reading-list"      . "Reading List")
+                              ("starred"           . "Starred")))
 
 (defun grc-format-categories (entry)
-  (let* ((labelz (aget entry 'label t))
-         (categories (aget entry 'categories t))
-         (cats (intersection categories
-                             '("read" "broadcast"
-                               "kept-unread" "starred")
-                             :test 'string=)))
-    (if cats
-        (concat (when labelz (mapconcat 'identity labelz " "))
-                (when labelz " ")
-                (mapconcat 'grc-transform-category cats " "))
-      (concat (when labelz (mapconcat 'identity labelz " "))
-              (when labelz " ")
-              "Unread"))))
+  (let* ((cats (aget entry 'categories t))
+         (cats (remove "reading-list" cats))
+         (cats (if (member "kept-unread" cats)
+                   (remove "fresh" cats)
+                 cats))
+         (cats (if (member "broadcast" cats)
+                   (remove "broadcast" cats)
+                 cats)))
+    (mapconcat (lambda (c) (or (aget grc-google-categories c t) c))
+               cats
+               " ")))
 
 (defun grc-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
@@ -244,8 +252,7 @@ color (#rrrrggggbbbb)."
                                  (date-to-time (aget entry 'date t)))
              source
              title
-             (if (or (< 0 (length (aget entry 'categories)))
-                     (< 0 (length (aget entry 'labels))))
+             (if (< 0 (length (aget entry 'categories)))
                  (format " (%s)" cats)
                "")))))
 
@@ -275,14 +282,19 @@ color (#rrrrggggbbbb)."
   (let ((inhibit-read-only t))
     (erase-buffer)
     (mapcar 'grc-print-entry entries)
-    (let ((keywords
-           (delete-dups
-            (append (grc-flatten (mapcar (lambda (e) (aget e 'categories t))
-                                         entries))
-                    (grc-flatten (mapcar (lambda (e) (aget e 'label t))
-                                         entries))
-                    (mapcar (lambda (e) (grc-truncate-text
-                                    (aget e 'source) 22 t)) entries)))))
+    ;; TODO: too convoluted- simplify
+    ;;       this gets all the cats across entries, flattens to one
+    ;;       list, dedups, then translates to what the user sees
+    (let* ((categories
+            (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
+                    (delete-dups (grc-flatten
+                                  (mapcar (lambda (e) (aget e 'categories t))
+                                          entries)))))
+           (keywords
+            (delete-dups
+             (append categories
+                     (mapcar (lambda (e) (grc-truncate-text
+                                     (aget e 'source) 22 t)) entries)))))
       (grc-highlight-keywords keywords))))
 
 ;; Main entry function
@@ -336,7 +348,7 @@ color (#rrrrggggbbbb)."
           (grc-send-request (grc-mark-read-request entry))
           (let ((mem (member entry grc-entry-cache))
                 (new-entry (aput 'entry 'categories
-                                 (cons "read" (aget entry 'categories t)))))
+                                 (remove "fresh" (aget entry 'categories t)))))
             (setcar mem new-entry)
             new-entry))
       (error "There was a problem marking the entry as read"))))
@@ -465,7 +477,7 @@ All currently available key bindings:
         (progn
           (grc-show-entry entry)
           (grc-list-refresh (grc-entry-index entry)))
-        (error "No previous entries"))))
+      (error "No previous entries"))))
 
 (defun grc-show-view-external ()
   (grc-view-external grc-current-entry))
