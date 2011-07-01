@@ -6,6 +6,7 @@
 ;;       start-process-shell-command and sentinels?
 
 ;; both list and show
+;; TODO: title line
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
 ;; TODO: adding note - edit w/ snippet=note
