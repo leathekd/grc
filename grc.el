@@ -284,7 +284,7 @@ color (#rrrrggggbbbb)."
                         (string<
                          (aget a field)
                          (aget b field)))))
-         (sorted (if reverse-result (nreverse sorted) sorted)))
+         (sorted (if reverse-result (reverse sorted) sorted)))
     (setq grc-entry-cache sorted)
     sorted))
 
