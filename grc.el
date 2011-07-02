@@ -6,7 +6,9 @@
 ;;       start-process-shell-command and sentinels?
 
 ;; both list and show
-;; TODO: header line?
+;; TODO: when showing non-default state, refresh and just hitting 'g'
+;;       should keep that state
+;; TODO: header line
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
 ;; TODO: adding note - edit w/ snippet=note
