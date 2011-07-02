@@ -1,10 +1,3 @@
-;; general
-;; TODO: investigate what it would take to remove reliance on g-client
-;;       if needed
-;; TODO: requests need to be much more async.  It's unacceptable to
-;;       freeze emacs when fetching feeds -
-;;       start-process-shell-command and sentinels?
-
 ;; both list and show
 ;; TODO: when showing non-default state, refresh and just hitting 'g'
 ;;       should keep that state
