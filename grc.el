@@ -245,25 +245,32 @@ color (#rrrrggggbbbb)."
 (defun grc-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
   (let* ((source (grc-prepare-text (aget entry 'source t)))
-        (title (grc-prepare-text (aget entry 'title t)))
-        (cats (grc-format-categories entry))
-        (date (date-to-time (aget entry 'date t)))
-        (one-week (- (float-time (current-time))
-                     (* 60 60 24 7)))
-        (static-width (+ 12 2 23 2 2 (length cats) 1))
-        (title-width (- (window-width) static-width)))
+         (title (grc-prepare-text (aget entry 'title t)))
+         (cats (grc-format-categories entry))
+         (date (date-to-time (aget entry 'date t)))
+         (one-week (- (float-time (current-time))
+                      (* 60 60 24 7)))
+         (static-width (+ 14 2 23 2 2 (length cats) 1))
+         (title-width (- (window-width) static-width)))
     (insert
-     (format "%-12s  %-23s  %s%s\n"
+     (format "%-12s  %-23s  %s"
              (format-time-string
               (if (> one-week (float-time date))
                   "%m/%d %l:%M %p"
-                "%a %l:%M %p")
+                "  %a %l:%M %p")
               date)
              (grc-truncate-text source 23 t)
-             (grc-truncate-text title title-width t)
-             (if (< 0 (length (aget entry 'categories)))
-                 (format " (%s)" cats)
-               "")))))
+             (grc-truncate-text title title-width t)))
+
+    (when (< 0 (length cats))
+      (let ((line-length (current-column))
+            (category-width (length cats)))
+
+        (insert (format
+                 (format "%%%ds"
+                         (- (window-width) line-length))
+                 (concat "(" cats ")")))))
+    (insert "\n")))
 
 (defun grc-group-by (field entries)
   (let* ((groups (remq nil (remove-duplicates
@@ -280,10 +287,10 @@ color (#rrrrggggbbbb)."
 
 (defun grc-sort-by (field entries &optional reverse-result)
   (let* ((sorted (sort (copy-alist entries)
-                      (lambda (a b)
-                        (string<
-                         (aget a field)
-                         (aget b field)))))
+                       (lambda (a b)
+                         (string<
+                          (aget a field)
+                          (aget b field)))))
          (sorted (if reverse-result (reverse sorted) sorted)))
     (setq grc-entry-cache sorted)
     sorted))
