@@ -224,25 +224,26 @@ color (#rrrrggggbbbb)."
             (concat str "...")
           str))
     ""))
+
 ;; "list of the categories that google adds to entries"
 (setq grc-google-categories '(("broadcast"         . "Shared")
                               ("broadcast-friends" . "Shared")
-                              ("fresh"             . "Unread")
+                              ("read"              . "Read")
                               ("kept-unread"       . "Kept Unread")
+                              ("like"              . "Liked")
                               ("reading-list"      . "Reading List")
                               ("starred"           . "Starred")))
 
 (defun grc-format-categories (entry)
-  (let* ((cats (aget entry 'categories t))
-         (cats (remove "reading-list" cats))
-         (cats (if (member "kept-unread" cats)
-                   (remove "fresh" cats)
-                 cats))
-         (cats (if (member "broadcast" cats)
-                   (remove "broadcast" cats)
-                 cats)))
+  (let* ((cats (aget entry 'categories t)))
     (mapconcat (lambda (c) (or (aget grc-google-categories c t) c))
-               cats
+               (reduce (lambda (categories c)
+                         (remove c categories))
+                       '("broadcast" "fresh" "reading-list"
+                         "tracking-body-link-used" "tracking-emailed"
+                         "tracking-item-link-used" "tracking-kept-unread"
+                         "tracking-mobile-read")
+                       :initial-value cats)
                " ")))
 
 (defun grc-print-entry (entry)
@@ -380,8 +381,9 @@ color (#rrrrggggbbbb)."
       (progn
         ;;(grc-send-request (grc-mark-read-request entry))
         (let ((mem (member entry grc-entry-cache)))
-          (aput 'entry 'categories
-                (remove "fresh" (aget entry 'categories t)))
+          (when (null (member "read" (aget entry 'categories t)))
+            (aput 'entry 'categories
+                  (cons "read" (aget entry 'categories t))))
           (setcar mem entry)
           entry))
     (error "There was a problem marking the entry as read")))
