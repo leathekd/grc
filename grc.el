@@ -114,15 +114,20 @@ color is added)"
 (defun grc-xml-get-source (xml-entry)
   "Will extract the souce from the xml-entry.  If it is a shared item, it will
   extract the source from the link with the title X's shared items"
-  (let ((categories (grc-xml-get-categories xml-entry)))
-    (if (or (member "broadcast" categories)
-            (member "broadcast-friends" categories))
-        (let ((link (first
-                     (remove-if-not
-                      (lambda (e) (string= "via" (xml-get-attribute e 'rel)))
-                      (xml-get-children xml-entry 'link)))))
-          (xml-get-attribute link 'title))
-      (grc-xml-get-child (first (xml-get-children xml-entry 'source)) 'title))))
+  (let* ((categories (grc-xml-get-categories xml-entry))
+         (title (if (or (member "broadcast" categories)
+                        (member "broadcast-friends" categories))
+                    (let ((link (first
+                                 (remove-if-not
+                                  (lambda (e) (string= "via"
+                                                  (xml-get-attribute e 'rel)))
+                                  (xml-get-children xml-entry 'link)))))
+                      (xml-get-attribute link 'title))
+                  (grc-xml-get-child
+                   (first (xml-get-children xml-entry 'source)) 'title))))
+    (if (string= "(title unknown)" title)
+        "Unknown"
+      title)))
 
 (defun grc-process-entry (xml-entry)
   `((id         . ,(grc-xml-get-child xml-entry 'id))
