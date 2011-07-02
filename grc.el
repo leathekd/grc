@@ -352,8 +352,6 @@ color (#rrrrggggbbbb)."
      (length (member entry grc-entry-cache))))
 
 (defun grc-show-entry (entry)
-  ;; save entry as grc-current-entry
-  (setq grc-current-entry entry)
   (let ((buffer (get-buffer-create grc-show-buffer)))
     (with-current-buffer buffer
       (grc-show-mode)
@@ -372,7 +370,7 @@ color (#rrrrggggbbbb)."
         (if (featurep 'w3m)
             (w3m-buffer)
           (html2text))))
-    (grc-mark-read entry)
+    (setq grc-current-entry (grc-mark-read entry))
     (switch-to-buffer buffer)
     (grc-list-refresh)))
 
