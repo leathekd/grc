@@ -1,18 +1,19 @@
 ;; general
-;; TODO: utf8/unicode characters aren't working - coding system?
 ;; TODO: investigate what it would take to remove reliance on g-client
+;;       if needed
 ;; TODO: requests need to be much more async.  It's unacceptable to
 ;;       freeze emacs when fetching feeds -
 ;;       start-process-shell-command and sentinels?
 
 ;; both list and show
-;; TODO: title line
+;; TODO: header line?
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
 ;; TODO: adding note - edit w/ snippet=note
 ;; TODO: emailing, sharing
 
 ;; List view
+;; TODO: operations on regions (read, etc)
 ;; TODO: flexible columns?
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
@@ -50,7 +51,6 @@ color is added)"
   (make-hash-table :test 'equal)
   "The hash table that contains unique grc faces.")
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General purpose functions
 (defun grc-list (thing)
@@ -67,7 +67,7 @@ color is added)"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
 (defun grc-remote-entries ()
-  "Currently this overrides and hooks into greader.el to get the job done."
+  "This overrides and hooks into greader.el to get the job done."
   (let ((g-atom-view-xsl nil)
         (g-html-handler `grc-parse-response)
         (greader-state-url-pattern (concat greader-state-url-pattern
@@ -200,12 +200,9 @@ color (#rrrrggggbbbb)."
 (defun grc-prepare-text (text)
   (when text
     (with-temp-buffer
-      (insert text)
-
-      ;; There must be a better way...
-      (html2text-replace-string "’" "'" (point-min) (point-max))
-      (html2text-replace-string "–" "--" (point-min) (point-max))
-      (html2text-replace-string "—" "--" (point-min) (point-max))
+      (insert (decode-coding-string text 'utf-8))
+      (when (featurep 'w3m)
+        (w3m-decode-entities))
       (html2text)
       (buffer-substring (point-min) (point-max)))))
 
