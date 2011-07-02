@@ -14,7 +14,7 @@
 
 ;; List view
 ;; TODO: operations on regions (read, etc)
-;; TODO: flexible columns?
+;; TODO: flexible columns? - calc max col sizes upfront
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
 ;; TODO: sorting/grouping list view
@@ -253,7 +253,7 @@ color (#rrrrggggbbbb)."
          (static-width (+ 14 2 23 2 2 (length cats) 1))
          (title-width (- (window-width) static-width)))
     (insert
-     (format "%-12s  %-23s  %s"
+     (format "%-14s  %-23s  %s"
              (format-time-string
               (if (> one-week (float-time date))
                   "%m/%d %l:%M %p"
@@ -263,13 +263,7 @@ color (#rrrrggggbbbb)."
              (grc-truncate-text title title-width t)))
 
     (when (< 0 (length cats))
-      (let ((line-length (current-column))
-            (category-width (length cats)))
-
-        (insert (format
-                 (format "%%%ds"
-                         (- (window-width) line-length))
-                 (concat "(" cats ")")))))
+      (insert (format " (%s)" cats)))
     (insert "\n")))
 
 (defun grc-group-by (field entries)
