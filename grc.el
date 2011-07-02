@@ -66,14 +66,17 @@ color is added)"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
-(defun grc-remote-entries ()
+(defun grc-remote-entries (&optional state)
   "This overrides and hooks into greader.el to get the job done."
   (let ((g-atom-view-xsl nil)
         (g-html-handler `grc-parse-response)
-        (greader-state-url-pattern (concat greader-state-url-pattern
-                                           "&xt=user/-/state/com.google/read"))
+        (greader-state-url-pattern
+         (if (null state)
+             (concat greader-state-url-pattern
+                     "&xt=user/-/state/com.google/read")
+           greader-state-url-pattern))
         (greader-number-of-articles 100))
-    (greader-reading-list)))
+    (greader-reading-list state)))
 
 (defun grc-send-request (request)
   (declare (special g-curl-program g-curl-common-options
@@ -308,15 +311,31 @@ color (#rrrrggggbbbb)."
                                      (aget e 'source) 22 t)) entries)))))
       (grc-highlight-keywords keywords))))
 
+(defun grc-read-state (prompt)
+  "Return state name read from minibuffer."
+  ;; TODO: are there more states? broadcast?
+  (let ((greader-state-alist
+         '(("broadcast-friends" . "broadcast-friends")
+           ("kept-unread" . "kept-unread")
+           ("read" . "read")
+           ("reading-list" . "reading-list")
+           ("starred" . "starred"))))
+    ;;TODO: fixme - use ido only if featurep
+    (ido-completing-read prompt
+                         greader-state-alist
+                         nil
+                         'require-match)))
+
 ;; Main entry function
-(defun grc-reading-list ()
-  (interactive)
+(defun grc-reading-list (&optional state)
+  (interactive "P")
   (g-auth-ensure-token greader-auth-handle)
-  ;;(greader-re-authenticate)
   (let ((buffer (get-buffer-create grc-list-buffer)))
     (with-current-buffer buffer
       (grc-list-mode)
-      (grc-display-list (grc-remote-entries))
+      (grc-display-list
+       (grc-remote-entries (when (and state (interactive-p))
+                             (grc-read-state "State: "))))
       (goto-char (point-min))
       (switch-to-buffer buffer))))
 
