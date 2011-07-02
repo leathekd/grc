@@ -20,7 +20,6 @@
 ;;       for refreshing a line - modify entry, delete line, redraw
 ;; TODO: sorting/grouping list view
 ;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
-;; TODO: all entries, starred entries, shared, kept-unread, etc...
 ;; TODO: search
 
 ;; Show view
@@ -315,18 +314,20 @@ color (#rrrrggggbbbb)."
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
-  ;; TODO: are there more states? broadcast?
-  (let ((greader-state-alist
-         '(("broadcast-friends" . "broadcast-friends")
-           ("kept-unread" . "kept-unread")
-           ("read" . "read")
-           ("reading-list" . "reading-list")
-           ("starred" . "starred"))))
-    ;;TODO: fixme - use ido only if featurep
-    (ido-completing-read prompt
-                         greader-state-alist
-                         nil
-                         'require-match)))
+  (let* ((grc-read-history '())
+         (greader-state-alist
+          '(("Shared" . "broadcast-friends")
+            ("Kept Unread" . "kept-unread")
+            ("Read" . "read")
+            ("Reading List" . "reading-list")
+            ("Starred" . "starred")))
+         (choices (sort (mapcar 'car greader-state-alist) 'string<))
+         (completing-read-fn (if (featurep 'ido)
+                                 'ido-completing-read
+                               'completing-read))
+         (selection (apply completing-read-fn prompt choices
+                           nil 'require-match nil grc-read-history)))
+    (aget greader-state-alist selection)))
 
 ;; Main entry function
 (defun grc-reading-list (&optional state)
