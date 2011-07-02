@@ -26,6 +26,8 @@
 
 (require 'cl)
 (require 'html2text)
+(require 'g-auth)
+(require 'greader)
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
