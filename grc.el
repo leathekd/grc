@@ -313,7 +313,8 @@ color (#rrrrggggbbbb)."
 ;; Main entry function
 (defun grc-reading-list ()
   (interactive)
-  (greader-re-authenticate)
+  (g-auth-ensure-token greader-auth-handle)
+  ;;(greader-re-authenticate)
   (let ((buffer (get-buffer-create grc-list-buffer)))
     (with-current-buffer buffer
       (grc-list-mode)
