@@ -13,9 +13,6 @@
 ;; TODO: emailing, sharing
 
 ;; List view
-;; TODO: highlighting is weird on alternate states
-;; TODO: in broadcast list view everything is unread.  Maybe "fresh"
-;;       isn't the right tag for unread
 ;; TODO: add years when looking at older posts
 ;; TODO: operations on regions (read, etc)
 ;; TODO: flexible columns? - calc max col sizes upfront
