@@ -13,13 +13,17 @@
 ;; TODO: emailing, sharing
 
 ;; List view
+;; TODO: highlighting is weird on alternate states
+;; TODO: in broadcast list view everything is unread.  Maybe "fresh"
+;;       isn't the right tag for unread
+;; TODO: add years when looking at older posts
 ;; TODO: operations on regions (read, etc)
 ;; TODO: flexible columns? - calc max col sizes upfront
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
 ;; TODO: sorting/grouping list view
 ;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
-;; TODO: all feeds, not just unread
+;; TODO: all entries, starred entries, shared, kept-unread, etc...
 ;; TODO: search
 
 ;; Show view
