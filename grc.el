@@ -371,16 +371,31 @@ color (#rrrrggggbbbb)."
     (with-current-buffer buffer
       (grc-show-mode)
       (let ((inhibit-read-only t)
+            (next-entry (cadr (member entry grc-entry-cache)))
+            (prev-entry (cadr (member entry (reverse grc-entry-cache))))
             (summary (or (aget entry 'content t)
                          (aget entry 'summary t)
                          "No summary provided.")))
+
         (erase-buffer)
         (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
                                          (car lst) (cadr lst))))
                 `(("Title"  ,(aget entry 'title))
-                  ("Link"   ,(aget entry 'link) )
-                  ("Date"   ,(aget entry 'date) )
-                  ("Source" ,(aget entry 'source))))
+                  ("Link"   ,(aget entry 'link))
+                  ("Date"   ,(aget entry 'date))
+                  ("Source" ,(aget entry 'source))
+                  ("Next Story"
+                   ,(if next-entry
+                        (concat (aget next-entry 'title)
+                                " from "
+                                (aget next-entry 'source))
+                      "None"))
+                  ("Previous Story"
+                   ,(if prev-entry
+                        (concat (aget prev-entry 'title)
+                                " from "
+                                (aget prev-entry 'source))
+                      "None"))))
         (insert "<br/>" summary)
         (if (featurep 'w3m)
             (w3m-buffer)
