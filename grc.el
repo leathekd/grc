@@ -558,6 +558,13 @@ All currently available key bindings:
     (let ((scroll-error-top-bottom t))
       (scroll-up-command 25))))
 
+(defun grc-show-retreat-or-show-prev-entry ()
+  (interactive)
+  (if (bobp)
+      (grc-show-previous-entry)
+    (let ((scroll-error-top-bottom t))
+      (scroll-down-command 25))))
+
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-show-help)
@@ -566,6 +573,7 @@ All currently available key bindings:
     (define-key map "n" 'grc-show-next-entry)
     (define-key map "p" 'grc-show-previous-entry)
     (define-key map " " 'grc-show-advance-or-show-next-entry)
+    (define-key map (kbd "S-SPC") 'grc-show-retreat-or-show-prev-entry)
     (when (featurep 'w3m)
       (define-key map (kbd "TAB") 'w3m-next-anchor))
     map)
