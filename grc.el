@@ -297,24 +297,25 @@ color (#rrrrggggbbbb)."
     (setq grc-entry-cache sorted)
     sorted))
 
+(defun grc-keywords (entries)
+  ;; TODO: too convoluted- simplify
+  ;;       this gets all the cats across entries, flattens to one
+  ;;       list, dedups, then translates to what the user sees
+  (let ((categories
+         (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
+                 (delete-dups (grc-flatten
+                               (mapcar (lambda (e) (aget e 'categories t))
+                                       entries))))))
+    (delete-dups
+     (append categories
+             (mapcar (lambda (e) (grc-truncate-text
+                             (aget e 'source) 22 t)) entries)))))
+
 (defun grc-display-list (entries)
   (let ((inhibit-read-only t))
     (erase-buffer)
     (mapcar 'grc-print-entry entries)
-    ;; TODO: too convoluted- simplify
-    ;;       this gets all the cats across entries, flattens to one
-    ;;       list, dedups, then translates to what the user sees
-    (let* ((categories
-            (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
-                    (delete-dups (grc-flatten
-                                  (mapcar (lambda (e) (aget e 'categories t))
-                                          entries)))))
-           (keywords
-            (delete-dups
-             (append categories
-                     (mapcar (lambda (e) (grc-truncate-text
-                                     (aget e 'source) 22 t)) entries)))))
-      (grc-highlight-keywords keywords))))
+    (grc-highlight-keywords (grc-keywords entries))))
 
 (defvar grc-state-alist '(("Shared"       . "broadcast-friends")
                           ("Kept Unread"  . "kept-unread")
@@ -382,7 +383,8 @@ color (#rrrrggggbbbb)."
         (insert "<br/>" summary)
         (if (featurep 'w3m)
             (w3m-buffer)
-          (html2text))))
+          (html2text))
+        (grc-highlight-keywords (grc-keywords grc-entry-cache))))
     (setq grc-current-entry (grc-mark-read entry))
     (switch-to-buffer buffer)
     (grc-list-refresh)))
