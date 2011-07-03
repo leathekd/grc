@@ -1,4 +1,5 @@
 ;; general
+;; TODO: Docstrings && help commands
 ;; TODO: Idiomaticism? Should any instances of aget be replaced with
 ;;       assoc?
 
@@ -10,6 +11,7 @@
 
 ;; List view
 ;; TODO: pagination?
+;; TODO: add counts to header line
 ;; TODO: add years when looking at older posts
 ;; TODO: operations on regions (read, etc)
 ;; TODO: flexible columns? - calc max col sizes upfront
@@ -20,7 +22,7 @@
 ;; TODO: search
 
 ;; Show view
-;; TODO:
+;; TODO: Show title of next and previous articles
 
 (require 'cl)
 (require 'html2text)
@@ -77,8 +79,6 @@ color is added)"
     (greader-reading-list state)))
 
 (defun grc-send-request (request)
-  (declare (special g-curl-program g-curl-common-options
-                    greader-auth-handle))
   (g-auth-ensure-token greader-auth-handle)
   (with-temp-buffer
     (shell-command
@@ -94,6 +94,7 @@ color is added)"
      (t (error "Error %s: " request)))))
 
 (defun grc-mark-read-request (entry)
+  (g-auth-ensure-token greader-auth-handle)
   (format "a=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
           (aget entry 'feed)
           (aget entry 'id)
@@ -387,16 +388,16 @@ color (#rrrrggggbbbb)."
     (grc-list-refresh)))
 
 (defun grc-mark-read (entry)
-  (condition-case nil
+  (condition-case err
       (progn
-        ;;(grc-send-request (grc-mark-read-request entry))
+        (grc-send-request (grc-mark-read-request entry))
         (let ((mem (member entry grc-entry-cache)))
           (when (null (member "read" (aget entry 'categories t)))
             (aput 'entry 'categories
                   (cons "read" (aget entry 'categories t))))
           (setcar mem entry)
           entry))
-    (error "There was a problem marking the entry as read")))
+    (error (message "There was a problem marking the entry as read: %s" err))))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
