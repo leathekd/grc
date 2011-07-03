@@ -353,6 +353,7 @@ color (#rrrrggggbbbb)."
 
       (goto-char (point-min))
       (switch-to-buffer buffer))))
+(defalias 'grc 'grc-reading-list)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
