@@ -1,11 +1,15 @@
+;; general
+;; TODO: Idiomaticism? Should any instances of aget be replaced with
+;;       assoc?
+
 ;; both list and show
-;; TODO: header line
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
 ;; TODO: adding note - edit w/ snippet=note
 ;; TODO: emailing, sharing
 
 ;; List view
+;; TODO: pagination?
 ;; TODO: add years when looking at older posts
 ;; TODO: operations on regions (read, etc)
 ;; TODO: flexible columns? - calc max col sizes upfront
@@ -311,15 +315,16 @@ color (#rrrrggggbbbb)."
                                      (aget e 'source) 22 t)) entries)))))
       (grc-highlight-keywords keywords))))
 
+(defvar grc-state-alist '(("Shared"       . "broadcast-friends")
+                          ("Kept Unread"  . "kept-unread")
+                          ("Read"         . "read")
+                          ("Reading List" . "reading-list")
+                          ("Starred"      . "starred")))
+
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
   (let* ((grc-read-history '())
-         (greader-state-alist
-          '(("Shared" . "broadcast-friends")
-            ("Kept Unread" . "kept-unread")
-            ("Read" . "read")
-            ("Reading List" . "reading-list")
-            ("Starred" . "starred")))
+         (greader-state-alist grc-state-alist)
          (choices (sort (mapcar 'car greader-state-alist) 'string<))
          (completing-read-fn (if (featurep 'ido)
                                  'ido-completing-read
@@ -340,6 +345,10 @@ color (#rrrrggggbbbb)."
     (with-current-buffer buffer
       (grc-list-mode)
       (grc-display-list (grc-remote-entries grc-current-state))
+      (setq header-line-format
+            (format "Google Reader Client for %s  Viewing: %s"
+                    greader-user-email (car (rassoc state grc-state-alist))))
+
       (goto-char (point-min))
       (switch-to-buffer buffer))))
 
