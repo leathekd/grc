@@ -1,6 +1,4 @@
 ;; both list and show
-;; TODO: when showing non-default state, refresh and just hitting 'g'
-;;       should keep that state
 ;; TODO: header line
 ;; TODO: mark unread, star, unstar, share(?), email(?)
 ;;       (greader-star)?
@@ -27,6 +25,7 @@
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
+(defvar grc-current-state "reading-list")
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
@@ -66,7 +65,7 @@ color is added)"
   (let ((g-atom-view-xsl nil)
         (g-html-handler `grc-parse-response)
         (greader-state-url-pattern
-         (if (null state)
+         (if (string= "reading-list" state)
              (concat greader-state-url-pattern
                      "&xt=user/-/state/com.google/read")
            greader-state-url-pattern))
@@ -333,12 +332,14 @@ color (#rrrrggggbbbb)."
 (defun grc-reading-list (&optional state)
   (interactive "P")
   (g-auth-ensure-token greader-auth-handle)
-  (let ((buffer (get-buffer-create grc-list-buffer)))
+  (let ((buffer (get-buffer-create grc-list-buffer))
+        (state (if (and state (interactive-p))
+                   (grc-read-state "State: ")
+                 grc-current-state)))
+    (setq grc-current-state state)
     (with-current-buffer buffer
       (grc-list-mode)
-      (grc-display-list
-       (grc-remote-entries (when (and state (interactive-p))
-                             (grc-read-state "State: "))))
+      (grc-display-list (grc-remote-entries grc-current-state))
       (goto-char (point-min))
       (switch-to-buffer buffer))))
 
