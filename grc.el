@@ -34,6 +34,8 @@
 (defvar grc-current-state "reading-list")
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
+;; The default of 4 hours seems to be too long
+(setq g-auth-lifetime "1 hour")
 
 (defgroup grc nil "Google Reader Client for Emacs")
 (defcustom grc-enable-hl-line t
