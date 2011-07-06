@@ -621,7 +621,7 @@ All currently available key bindings:
     (define-key map "p" 'grc-show-previous-entry)
     (define-key map " " 'grc-show-advance-or-show-next-entry)
     (when (featurep 'w3m)
-      (define-key map (kbd "RET") 'w3m-external-view-current-url)
+      (define-key map (kbd "RET") 'w3m-external-view-this-url)
       (define-key map (kbd "TAB") 'w3m-next-anchor)
       (define-key map (kbd "S-TAB") 'w3m-previous-anchor))
     map)
