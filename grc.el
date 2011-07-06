@@ -109,6 +109,15 @@ color is added)"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
+(defun grc-ensure-token (auth-handle)
+  (when (or
+         (null (g-auth-token greader-auth-handle))
+         (null (g-auth-cookie-alist greader-auth-handle))
+         (time-less-p (g-auth-lifetime greader-auth-handle)
+                      (time-since (g-auth-timestamp greader-auth-handle))))
+    (g-authenticate auth-handle))
+  auth-handle)
+
 (defun grc-remote-entries (&optional state)
   "This overrides and hooks into greader.el to get the job done."
   (let ((g-atom-view-xsl nil)
@@ -118,27 +127,33 @@ color is added)"
              (concat greader-state-url-pattern
                      "&xt=user/-/state/com.google/read")
            greader-state-url-pattern))
-        (greader-number-of-articles 100))
+        (greader-number-of-articles grc-fetch-count))
     (greader-reading-list state)))
 
-(defun grc-send-request (request)
-  (g-auth-ensure-token greader-auth-handle)
+(defun grc-send-edit-request (request)
+  (grc-send-request
+   "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
+   request))
+
+(defun grc-send-request (endpoint request)
+  (grc-ensure-token greader-auth-handle)
   (with-temp-buffer
-    (shell-command
-     (format "%s %s %s  -X POST -d '%s' '%s' "
-             g-curl-program g-curl-common-options
-             (g-authorization greader-auth-handle)
-             request
-             "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client")
-     (current-buffer))
+    (let ((shell-file-name grc-shell-file-name))
+      (shell-command
+       (format
+        "%s %s %s  -X POST -d '%s' '%s' "
+        g-curl-program g-curl-common-options
+        (g-authorization greader-auth-handle)
+        request
+        endpoint)
+       (current-buffer)))
     (goto-char (point-min))
     (cond
      ((looking-at "OK") (message "OK"))
      (t (error "Error %s: " request)))))
 
 (defun grc-mark-read-request (entry)
-  (g-auth-ensure-token greader-auth-handle)
-  (format "a=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
+  (format "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
           (aget entry 'feed)
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
@@ -372,7 +387,7 @@ color (#rrrrggggbbbb)."
 ;; Main entry function
 (defun grc-reading-list (&optional state)
   (interactive "P")
-  (g-auth-ensure-token greader-auth-handle)
+  (grc-ensure-token greader-auth-handle)
   (let ((buffer (get-buffer-create grc-list-buffer))
         (state (if (and state (interactive-p))
                    (grc-read-state "State: ")
