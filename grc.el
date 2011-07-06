@@ -603,6 +603,7 @@ All currently available key bindings:
       (error "No previous entries"))))
 
 (defun grc-show-view-external ()
+  (interactive)
   (grc-view-external grc-current-entry))
 
 (defun grc-show-advance-or-show-next-entry ()
