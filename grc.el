@@ -545,6 +545,7 @@ color (#rrrrggggbbbb)."
     (define-key map " " 'grc-list-show-entry)
     (define-key map "g" 'grc-reading-list)
     (define-key map (kbd "RET") 'grc-list-show-entry)
+    (define-key map "s" 'grc-list-sort)
     map)
   "Keymap for \"grc list\" buffers.")
 (fset 'grc-list-mode-map grc-list-mode-map)
