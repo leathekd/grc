@@ -158,6 +158,16 @@ color is added)"
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
 
+(defun grc-total-unread-count ()
+  (reduce (lambda (x y)
+            (let ((yval (cdr (assoc 'count y))))
+              (if (> x yval) x yval)))
+          (greader-unread-count) :initial-value 0))
+
+(defun grc-subscriptions ()
+  (let ((shell-file-name grc-shell-file-name))
+    (greader-subscriptions)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Request parsing
 (defun grc-xml-get-child (node child-name)
