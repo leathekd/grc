@@ -29,11 +29,6 @@
 (require 'g-auth)
 (require 'greader)
 
-(defvar grc-entry-cache nil)
-(defvar grc-current-entry nil)
-(defvar grc-current-state "reading-list")
-(defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
-(defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 ;; The default of 4 hours seems to be too long
 (setq g-auth-lifetime "1 hour")
 
@@ -42,6 +37,48 @@
   "Turn on hl-line-mode in the grc list buffer"
   :type  'boolean
   :group 'grc)
+
+(defcustom grc-fetch-count 100
+  "The count of items to fetch.  The larger the count the slower the request."
+  :type 'integer
+  :group 'grc)
+
+(defcustom grc-shell-file-name "/bin/bash"
+  "Greader, as is, has issues with zsh.  This is my workaround."
+  :type 'string
+  :group 'grc)
+
+(defvar grc-google-categories
+  '(("broadcast"               . "Shared")
+    ("broadcast-friends"       . "Shared")
+    ("fresh"                   . "Fresh")
+    ("kept-unread"             . "Kept Unread")
+    ("like"                    . "Liked")
+    ("read"                    . "Read")
+    ("reading-list"            . "Reading List")
+    ("starred"                 . "Starred")
+    ("tracking-body-link-used" . "Tracking Body Link Used")
+    ("tracking-emailed"        . "Tracking Email")
+    ("tracking-item-link-used" . "Tracking Item Link Used")
+    ("tracking-kept-unread"    . "Tracking Kept Unread")
+    ("tracking-mobile-read"    . "Tracking Mobile Read"))
+  "list of the categories that google adds to entries")
+
+(defvar grc-entry-cache nil)
+(defvar grc-current-entry nil)
+(defvar grc-current-state "reading-list")
+
+(defvar grc-sort-columns '(date source))
+(defvar grc-current-sort nil)
+(defvar grc-current-sort-reversed nil)
+(defcustom grc-default-sort-column 'date
+  "Default column by which to sort the list view"
+  :group 'grc
+  :type '(choice (const :tag "Date" 'date)
+                 (const :tag "Source" 'source)))
+
+(defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+(defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 (defface grc-highlight-nick-base-face
   '((t nil))
@@ -144,9 +181,9 @@ color is added)"
 (defun grc-parse-response (buffer)
   (let* ((root (car (xml-parse-region (point-min) (point-max))))
          (xml-entries (xml-get-children root 'entry))
-         (entries (grc-sort-by 'date
+         (entries (grc-sort-by (or grc-current-sort grc-default-sort-column)
                                (mapcar 'grc-process-entry xml-entries)
-                               t)))
+                               grc-current-sort-reversed)))
     (setq grc-xml-entries xml-entries)
     entries))
 
@@ -231,15 +268,6 @@ color (#rrrrggggbbbb)."
           str))
     ""))
 
-;; "list of the categories that google adds to entries"
-(setq grc-google-categories '(("broadcast"         . "Shared")
-                              ("broadcast-friends" . "Shared")
-                              ("read"              . "Read")
-                              ("kept-unread"       . "Kept Unread")
-                              ("like"              . "Liked")
-                              ("reading-list"      . "Reading List")
-                              ("starred"           . "Starred")))
-
 (defun grc-format-categories (entry)
   (let* ((cats (aget entry 'categories t)))
     (mapconcat (lambda (c) (or (aget grc-google-categories c t) c))
@@ -293,8 +321,8 @@ color (#rrrrggggbbbb)."
   (let* ((sorted (sort (copy-alist entries)
                        (lambda (a b)
                          (string<
-                          (aget a field)
-                          (aget b field)))))
+                          (downcase (aget a field))
+                          (downcase (aget b field))))))
          (sorted (if reverse-result (reverse sorted) sorted)))
     (setq grc-entry-cache sorted)
     sorted))
@@ -481,6 +509,17 @@ color (#rrrrggggbbbb)."
 (defun grc-list-show-entry ()
   (interactive)
   (grc-show-entry (grc-list-get-current-entry)))
+
+(defun grc-list-sort ()
+  (interactive)
+  (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
+                       grc-default-sort-column)))
+    (setq grc-current-sort-reversed (not grc-current-sort-reversed))
+    (when (not grc-current-sort-reversed)
+      (setq grc-current-sort next-sort))
+    (message "%s %s" grc-current-sort  grc-current-sort-reversed)
+    (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed)
+    (grc-list-refresh)))
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
