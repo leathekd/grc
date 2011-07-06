@@ -2,6 +2,8 @@
 ;; TODO: Docstrings && help commands
 ;; TODO: Idiomaticism? Should any instances of aget be replaced with
 ;;       assoc?
+;; TODO: refactor downloading and showing - ie, initial dl should call
+;;       grc-refresh-view
 
 ;; both list and show
 ;; TODO: mark unread, star, unstar, share(?), email(?)
@@ -18,11 +20,13 @@
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
 ;; TODO: sorting/grouping list view
+;; TODO: secondary sort
 ;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
 ;; TODO: search
 
 ;; Show view
-;; TODO: 
+;; TODO: fill-buffer to prevent long lines (does w3m have something
+;;       for this? or is generic "fill")
 
 (require 'cl)
 (require 'html2text)
@@ -377,10 +381,7 @@ color (#rrrrggggbbbb)."
     (with-current-buffer buffer
       (grc-list-mode)
       (grc-display-list (grc-remote-entries grc-current-state))
-      (setq header-line-format
-            (format "Google Reader Client for %s  Viewing: %s"
-                    greader-user-email (car (rassoc state grc-state-alist))))
-
+      (grc-list-header-line)
       (goto-char (point-min))
       (switch-to-buffer buffer))))
 (defalias 'grc 'grc-reading-list)
@@ -476,8 +477,19 @@ color (#rrrrggggbbbb)."
   (previous-line)
   (move-beginning-of-line nil))
 
+(defun grc-list-header-line ()
+  (setq header-line-format
+        (format "Google Reader Client for %s  Viewing: %s  Sort: %s %s"
+                greader-user-email (car (rassoc grc-current-state
+                                                grc-state-alist))
+                (capitalize (symbol-name (or grc-current-sort
+                                             grc-default-sort-column)))
+                (if grc-current-sort-reversed
+                    "Descending" "Ascending"))))
+
 (defun grc-list-refresh ()
   (with-current-buffer grc-list-buffer
+    (grc-list-header-line)
     (let ((line (1- (line-number-at-pos))))
       (grc-display-list grc-entry-cache)
       (goto-char (point-min))
