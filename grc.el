@@ -452,16 +452,19 @@ color (#rrrrggggbbbb)."
     (grc-list-refresh)))
 
 (defun grc-mark-read (entry)
-  (condition-case err
-      (progn
-        (grc-send-request (grc-mark-read-request entry))
-        (let ((mem (member entry grc-entry-cache)))
-          (when (null (member "read" (aget entry 'categories t)))
-            (aput 'entry 'categories
-                  (cons "read" (aget entry 'categories t))))
-          (setcar mem entry)
-          entry))
-    (error (message "There was a problem marking the entry as read: %s" err))))
+  (if (null (member "read" (aget entry 'categories)))
+      (condition-case err
+          (progn
+            (grc-send-edit-request (grc-mark-read-request entry))
+            (let ((mem (member entry grc-entry-cache)))
+              (when (null (member "read" (aget entry 'categories t)))
+                (aput 'entry 'categories
+                      (cons "read" (aget entry 'categories t))))
+              (setcar mem entry)
+              entry))
+        (error (message "There was a problem marking the entry as read: %s"
+                        err)))
+    entry))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
