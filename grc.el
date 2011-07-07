@@ -27,6 +27,8 @@
 ;; Show view
 ;; TODO: fill-buffer to prevent long lines (does w3m have something
 ;;       for this? or is generic "fill")
+;; TODO: user comments
+;; TODO: add comment
 
 (require 'cl)
 (require 'html2text)
