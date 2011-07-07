@@ -111,14 +111,13 @@ color is added)"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
-(defun grc-ensure-token (auth-handle)
+(defun grc-ensure-authenticated ()
   (when (or
          (null (g-auth-token greader-auth-handle))
          (null (g-auth-cookie-alist greader-auth-handle))
          (time-less-p (g-auth-lifetime greader-auth-handle)
                       (time-since (g-auth-timestamp greader-auth-handle))))
-    (g-authenticate auth-handle))
-  auth-handle)
+    (greader-re-authenticate)))
 
 (defun grc-remote-entries (&optional state)
   "This overrides and hooks into greader.el to get the job done."
@@ -138,7 +137,7 @@ color is added)"
    request))
 
 (defun grc-send-request (endpoint request)
-  (grc-ensure-token greader-auth-handle)
+  (grc-ensure-authenticated)
   (with-temp-buffer
     (let ((shell-file-name grc-shell-file-name))
       (shell-command
@@ -399,7 +398,7 @@ color (#rrrrggggbbbb)."
 ;; Main entry function
 (defun grc-reading-list (&optional state)
   (interactive "P")
-  (grc-ensure-token greader-auth-handle)
+  (grc-ensure-authenticated)
   (let ((buffer (get-buffer-create grc-list-buffer))
         (state (if (and state (interactive-p))
                    (grc-read-state "State: ")
