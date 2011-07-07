@@ -21,7 +21,6 @@
 ;;       for refreshing a line - modify entry, delete line, redraw
 ;; TODO: sorting/grouping list view
 ;; TODO: secondary sort
-;; TODO: mark all as read: http://www.google.com/reader/api/0/mark-all-as-read
 ;; TODO: search
 
 ;; Show view
