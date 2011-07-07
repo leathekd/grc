@@ -153,8 +153,9 @@ color is added)"
      ((looking-at "OK") (message "OK"))
      (t (error "Error %s: " request)))))
 
-(defun grc-mark-read-request (entry)
-  (format "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
+(defun grc-mark-read-request (entry &optional unread)
+  (format "%s=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
+          (if unread "r" "a")
           (aget entry 'feed)
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
@@ -462,20 +463,24 @@ color (#rrrrggggbbbb)."
     (switch-to-buffer buffer)
     (grc-list-refresh)))
 
-(defun grc-mark-read (entry)
-  (if (null (member "read" (aget entry 'categories)))
-      (condition-case err
-          (progn
-            (grc-send-edit-request (grc-mark-read-request entry))
-            (let ((mem (member entry grc-entry-cache)))
-              (when (null (member "read" (aget entry 'categories t)))
-                (aput 'entry 'categories
-                      (cons "read" (aget entry 'categories t))))
-              (setcar mem entry)
-              entry))
-        (error (message "There was a problem marking the entry as read: %s"
-                        err)))
+(defun grc-add-read-category (entry)
+  (let ((mem (member entry grc-entry-cache)))
+    (when (null (member "read" (aget entry 'categories t)))
+      (aput 'entry 'categories
+            (cons "read" (aget entry 'categories t))))
+    (setcar mem entry)
     entry))
+
+(defun grc-mark-read (entry)
+  (if (member "read" (aget entry 'categories))
+      entry
+    (condition-case err
+        (progn
+          (grc-ensure-authenticated)
+          (grc-send-edit-request (grc-mark-read-request entry))
+          (grc-add-read-category entry))
+      (error (message "There was a problem marking the entry as read: %s"
+                      err)))))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
@@ -545,6 +550,28 @@ color (#rrrrggggbbbb)."
 (defun grc-list-mark-read-and-remove ()
   (interactive)
   (grc-mark-read-and-remove (grc-list-get-current-entry))
+  (grc-list-refresh))
+
+(defun grc-list-mark-all-read (feed)
+  (interactive "P")
+  (let* ((feed-name (when (and feed (interactive-p))
+                        (ido-completing-read "Feed: "
+                                             (mapcar (lambda (e) (aget e
+                                                                  'source t))
+                                                     grc-entry-cache)
+                                             nil t)))
+         (items (remove-if-not (lambda (e) (string= feed-name
+                                                    (aget e 'source t)))
+                                    grc-entry-cache))
+         (src (aget (first items) 'feed t)))
+
+    (grc-ensure-authenticated)
+    (grc-send-request "http://www.google.com/reader/api/0/mark-all-as-read"
+                      (format "s=%s&ts=%s&T=%s"
+                              (or src "user/-/state/com.google/reading-list")
+                              (floor (* 1000000 (float-time)))
+                              (g-auth-token greader-auth-handle)))
+    (mapcar 'grc-add-read-category (or items grc-entry-cache)))
   (grc-list-refresh))
 
 (defun grc-list-show-entry ()
