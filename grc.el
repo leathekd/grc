@@ -19,7 +19,6 @@
 ;; TODO: flexible columns? - calc max col sizes upfront
 ;; TODO: investigate other ways of refreshing view (delete lines, etc)
 ;;       for refreshing a line - modify entry, delete line, redraw
-;; TODO: sorting/grouping list view
 ;; TODO: secondary sort
 ;; TODO: search
 
@@ -152,12 +151,19 @@ color is added)"
      ((looking-at "OK") (message "OK"))
      (t (error "Error %s: " request)))))
 
-(defun grc-mark-read-request (entry &optional unread)
-  (format "%s=user/-/state/com.google/read&async=true&s=%s&i=%s&T=%s"
-          (if unread "r" "a")
+(defun grc-google-tag-request (entry tag remove)
+  (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
+          (if remove "r" "a")
+          tag
           (aget entry 'feed)
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
+
+(defun grc-mark-read-request (entry &optional unread)
+  (grc-google-tag-request entry "read" unread))
+
+(defun grc-mark-keep-unread (entry)
+  (grc-google-tag-request entry "kept-unread" nil))
 
 (defun grc-total-unread-count ()
   (reduce (lambda (x y)
@@ -462,24 +468,31 @@ color (#rrrrggggbbbb)."
     (switch-to-buffer buffer)
     (grc-list-refresh)))
 
-(defun grc-add-read-category (entry)
+(defun grc-add-category (entry category)
   (let ((mem (member entry grc-entry-cache)))
-    (when (null (member "read" (aget entry 'categories t)))
+    (when (null (member category (aget entry 'categories t)))
       (aput 'entry 'categories
-            (cons "read" (aget entry 'categories t))))
+            (cons category (aget entry 'categories t))))
     (setcar mem entry)
     entry))
 
-(defun grc-mark-read (entry)
-  (if (member "read" (aget entry 'categories))
-      entry
-    (condition-case err
-        (progn
-          (grc-ensure-authenticated)
-          (grc-send-edit-request (grc-mark-read-request entry))
-          (grc-add-read-category entry))
-      (error (message "There was a problem marking the entry as read: %s"
-                      err)))))
+(defun grc-mark-fn (tag)
+  `(lambda (entry &optional remove)
+     (if (member ,tag (aget entry 'categories))
+         entry
+       (condition-case err
+           (progn
+             (grc-ensure-authenticated)
+             (grc-send-edit-request (grc-google-tag-request entry ,tag remove))
+             (grc-add-category entry ,tag))
+         (error (message "There was a problem marking the entry as read: %s"
+                         err))))))
+
+(defun grc-mark-read (entry &optional remove)
+  (funcall (grc-mark-fn "read") entry remove))
+
+(defun grc-mark-keep-unread (entry &optional remove)
+  (funcall (grc-mark-fn "keep-unread") entry remove))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
@@ -539,29 +552,37 @@ color (#rrrrggggbbbb)."
   (grc-view-external (grc-list-get-current-entry))
   (grc-list-refresh))
 
+(defun grc-list-mark-fn (tag)
+  `(lambda ()
+     (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry))
+     (grc-list-next-entry)
+     (grc-list-refresh)
+     (forward-line)))
+
 (defun grc-list-mark-read ()
   (interactive)
-  (grc-mark-read (grc-list-get-current-entry))
-  (grc-list-next-entry)
-  (grc-list-refresh)
-  (forward-line))
+  (funcall (grc-list-mark-fn "read")))
 
 (defun grc-list-mark-read-and-remove ()
   (interactive)
   (grc-mark-read-and-remove (grc-list-get-current-entry))
   (grc-list-refresh))
 
+(defun grc-list-mark-kept-unread ()
+  (interactive)
+  (funcall (grc-list-mark-fn "kept-unread")))
+
 (defun grc-list-mark-all-read (feed)
   (interactive "P")
   (let* ((feed-name (when (and feed (interactive-p))
-                        (ido-completing-read "Feed: "
-                                             (mapcar (lambda (e) (aget e
-                                                                  'source t))
-                                                     grc-entry-cache)
-                                             nil t)))
+                      (ido-completing-read "Feed: "
+                                           (mapcar (lambda (e) (aget e
+                                                                'source t))
+                                                   grc-entry-cache)
+                                           nil t)))
          (items (remove-if-not (lambda (e) (string= feed-name
-                                                    (aget e 'source t)))
-                                    grc-entry-cache))
+                                               (aget e 'source t)))
+                               grc-entry-cache))
          (src (aget (first items) 'feed t)))
 
     (grc-ensure-authenticated)
@@ -570,7 +591,8 @@ color (#rrrrggggbbbb)."
                               (or src "user/-/state/com.google/reading-list")
                               (floor (* 1000000 (float-time)))
                               (g-auth-token greader-auth-handle)))
-    (mapcar 'grc-add-read-category (or items grc-entry-cache)))
+    (mapcar (lambda (e) (grc-add-category e "read"))
+            (or items grc-entry-cache)))
   (grc-list-refresh))
 
 (defun grc-list-show-entry ()
@@ -584,7 +606,6 @@ color (#rrrrggggbbbb)."
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
-    (message "%s %s" grc-current-sort  grc-current-sort-reversed)
     (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed)
     (grc-list-refresh)))
 
@@ -595,6 +616,7 @@ color (#rrrrggggbbbb)."
     (define-key map "v" 'grc-list-view-external)
     (define-key map "r" 'grc-list-mark-read)
     (define-key map "x" 'grc-list-mark-read-and-remove)
+    (define-key map "k" 'grc-list-mark-kept-unread)
     (define-key map "n" 'grc-list-next-entry)
     (define-key map "p" 'grc-list-previous-entry)
     (define-key map " " 'grc-list-show-entry)
@@ -628,6 +650,9 @@ All currently available key bindings:
   ;;TODO
   (interactive)
   )
+
+(defun grc-show-mark-kept-unread ()
+  (funcall (grc-list-mark-fn "kept-unread")))
 
 (defun grc-show-kill-this-buffer ()
   (interactive)
@@ -671,6 +696,7 @@ All currently available key bindings:
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "?" 'grc-show-help)
+    (define-key map "k" 'grc-show-mark-kept-unread)
     (define-key map "q" 'grc-show-kill-this-buffer)
     (define-key map "v" 'grc-show-view-external)
     (define-key map "n" 'grc-show-next-entry)
