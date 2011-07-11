@@ -479,21 +479,25 @@ color (#rrrrggggbbbb)."
 
 (defun grc-mark-fn (tag)
   `(lambda (entry &optional remove)
-     (if (member ,tag (aget entry 'categories))
-         entry
-       (condition-case err
-           (progn
-             (grc-ensure-authenticated)
-             (grc-send-edit-request (grc-google-tag-request entry ,tag remove))
-             (grc-add-category entry ,tag))
-         (error (message "There was a problem marking the entry as read: %s"
-                         err))))))
 
 (defun grc-mark-read (entry &optional remove)
   (funcall (grc-mark-fn "read") entry remove))
 
 (defun grc-mark-keep-unread (entry &optional remove)
   (funcall (grc-mark-fn "keep-unread") entry remove))
+     (let ((mem (member ,tag (aget entry 'categories))))
+       (cond
+        ((and mem (null remove)) entry)
+        ((and (null mem) remove) entry)
+        (t (condition-case err
+               (progn
+                 (grc-send-edit-request (grc-google-tag-request entry ,tag
+                                                                remove))
+                 (if (null remove)
+                     (grc-add-category entry ,tag)
+                   (grc-remove-category entry ,tag)))
+             (error (message "There was a problem marking the entry as read: %s"
+                             err))))))))
 
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
