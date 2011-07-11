@@ -159,12 +159,6 @@ color is added)"
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
 
-(defun grc-mark-read-request (entry &optional unread)
-  (grc-google-tag-request entry "read" unread))
-
-(defun grc-mark-keep-unread (entry)
-  (grc-google-tag-request entry "kept-unread" nil))
-
 (defun grc-total-unread-count ()
   (reduce (lambda (x y)
             (let ((yval (cdr (assoc 'count y))))
