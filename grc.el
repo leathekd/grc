@@ -6,7 +6,7 @@
 ;;       grc-refresh-view
 
 ;; both list and show
-;; TODO: mark unread, star, unstar, share(?), email(?)
+;; TODO: star, unstar, share(?)
 ;;       (greader-star)?
 ;; TODO: adding note - edit w/ snippet=note
 ;; TODO: emailing, sharing
@@ -502,6 +502,9 @@ color (#rrrrggggbbbb)."
 (defun grc-mark-read-and-remove (entry)
   (delete (grc-mark-read entry) grc-entry-cache))
 
+(defun grc-mark-starred (entry &optional remove)
+  (funcall (grc-mark-fn "starred") entry remove))
+
 (defun grc-view-external (entry)
   "Open the current rss entry in the default emacs browser"
   (interactive)
@@ -558,11 +561,10 @@ color (#rrrrggggbbbb)."
   (grc-list-refresh))
 
 (defun grc-list-mark-fn (tag)
-  `(lambda ()
-     (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry))
+  `(lambda (&optional remove)
+     (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry) remove)
      (grc-list-next-entry)
-     (grc-list-refresh)
-     (forward-line)))
+     (grc-list-refresh)))
 
 (defun grc-list-mark-read ()
   (interactive)
@@ -573,9 +575,13 @@ color (#rrrrggggbbbb)."
   (grc-mark-read-and-remove (grc-list-get-current-entry))
   (grc-list-refresh))
 
-(defun grc-list-mark-kept-unread ()
-  (interactive)
-  (funcall (grc-list-mark-fn "kept-unread")))
+(defun grc-list-mark-kept-unread (remove)
+  (interactive "P")
+  (funcall (grc-list-mark-fn "kept-unread") remove))
+
+(defun grc-list-mark-starred (remove)
+  (interactive "P")
+  (funcall (grc-list-mark-fn "starred") remove))
 
 (defun grc-list-mark-all-read (feed)
   (interactive "P")
@@ -616,18 +622,19 @@ color (#rrrrggggbbbb)."
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "?" 'grc-list-help)
-    (define-key map "q" 'grc-kill-this-buffer)
-    (define-key map "v" 'grc-list-view-external)
-    (define-key map "r" 'grc-list-mark-read)
-    (define-key map "x" 'grc-list-mark-read-and-remove)
-    (define-key map "k" 'grc-list-mark-kept-unread)
-    (define-key map "n" 'grc-list-next-entry)
-    (define-key map "p" 'grc-list-previous-entry)
-    (define-key map " " 'grc-list-show-entry)
-    (define-key map "g" 'grc-reading-list)
+    (define-key map "q"         'grc-kill-this-buffer)
+    (define-key map "?"         'grc-list-help)
+    (define-key map "k"         'grc-list-mark-kept-unread)
+    (define-key map "r"         'grc-list-mark-read)
+    (define-key map "x"         'grc-list-mark-read-and-remove)
+    (define-key map "s"         'grc-list-mark-starred)
+    (define-key map "n"         'grc-list-next-entry)
+    (define-key map "p"         'grc-list-previous-entry)
+    (define-key map " "         'grc-list-show-entry)
     (define-key map (kbd "RET") 'grc-list-show-entry)
-    (define-key map "s" 'grc-list-sort)
+    (define-key map "o"         'grc-list-sort)
+    (define-key map "v"         'grc-list-view-external)
+    (define-key map "g"         'grc-reading-list)
     map)
   "Keymap for \"grc list\" buffers.")
 (fset 'grc-list-mode-map grc-list-mode-map)
@@ -635,12 +642,12 @@ color (#rrrrggggbbbb)."
 (defun grc-list-mode ()
   "Major mode for viewing feeds with grc
 
-This buffer contains the results of the \"grc-reading-list\" command
-for displaying unread feeds from Google Reader.
+  This buffer contains the results of the \"grc-reading-list\" command
+  for displaying unread feeds from Google Reader.
 
-All currently available key bindings:
+  All currently available key bindings:
 
-\\{grc-list-mode-map}"
+  \\{grc-list-mode-map}"
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-list-mode-map)
@@ -656,8 +663,13 @@ All currently available key bindings:
   (interactive)
   )
 
-(defun grc-show-mark-kept-unread ()
-  (funcall (grc-list-mark-fn "kept-unread")))
+(defun grc-show-mark-kept-unread (remove)
+  (interactive "P")
+  (funcall (grc-mark-fn "kept-unread") grc-current-entry remove))
+
+(defun grc-show-mark-starred (remove)
+  (interactive "P")
+  (funcall (grc-mark-fn "starred") grc-current-entry remove))
 
 (defun grc-show-kill-this-buffer ()
   (interactive)
@@ -700,16 +712,17 @@ All currently available key bindings:
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map " " 'grc-show-advance-or-show-next-entry)
     (define-key map "?" 'grc-show-help)
-    (define-key map "k" 'grc-show-mark-kept-unread)
     (define-key map "q" 'grc-show-kill-this-buffer)
-    (define-key map "v" 'grc-show-view-external)
+    (define-key map "k" 'grc-show-mark-kept-unread)
+    (define-key map "s" 'grc-show-mark-starred)
     (define-key map "n" 'grc-show-next-entry)
     (define-key map "p" 'grc-show-previous-entry)
-    (define-key map " " 'grc-show-advance-or-show-next-entry)
+    (define-key map "v" 'grc-show-view-external)
     (when (featurep 'w3m)
-      (define-key map (kbd "RET") 'w3m-external-view-this-url)
-      (define-key map (kbd "TAB") 'w3m-next-anchor)
+      (define-key map (kbd "RET")   'w3m-external-view-this-url)
+      (define-key map (kbd "TAB")   'w3m-next-anchor)
       (define-key map (kbd "S-TAB") 'w3m-previous-anchor))
     map)
   "Keymap for \"grc show\" buffers.")
