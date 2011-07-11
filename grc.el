@@ -268,8 +268,7 @@ color (#rrrrggggbbbb)."
           (set-face-foreground new-kw-face color)
           (puthash word new-kw-face grc-highlight-face-table))
         (put-text-property (car bounds) (cdr bounds) 'face new-kw-face))
-      (setq keywords (cdr keywords))))
-  )
+      (setq keywords (cdr keywords)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
