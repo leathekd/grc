@@ -469,6 +469,14 @@ color (#rrrrggggbbbb)."
     (setcar mem entry)
     entry))
 
+(defun grc-remove-category (entry category)
+  (let ((mem (member entry grc-entry-cache)))
+    (when (member category (aget entry 'categories t))
+      (aput 'entry 'categories
+            (delete category (aget entry 'categories t))))
+    (setcar mem entry)
+    entry))
+
 (defun grc-mark-fn (tag)
   `(lambda (entry &optional remove)
      (if (member ,tag (aget entry 'categories))
