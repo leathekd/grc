@@ -1,15 +1,22 @@
 ;; general
+;; TODO: Switch to
+;; https://www.google.com/reader/api/0/stream/contents/?sharers=CNeog8beARCElIvC_AoQ6IGRkbgCEKvg1JcWELrV6PyrAxCIz_rcggIQo5z87ZcBENe5rra6Ag&n=100
+;; url to get the comments and annotations for the items
+;; need to access https://www.google.com/reader/api/0/friend/list to
+;; get to the encodedSharersList to send in...
+;; This might necessitate leaving greader behind...
+
+
 ;; TODO: Docstrings && help commands
-;; TODO: Idiomaticism? Should any instances of aget be replaced with
-;;       assoc?
 ;; TODO: refactor downloading and showing - ie, initial dl should call
 ;;       grc-refresh-view
+;; TODO: split this file into smaller files
 
 ;; both list and show
-;; TODO: star, unstar, share(?)
-;;       (greader-star)?
+;; TODO: All, not just unread
+;; TODO: share
 ;; TODO: adding note - edit w/ snippet=note
-;; TODO: emailing, sharing
+;; TODO: emailing
 
 ;; List view
 ;; TODO: pagination?
