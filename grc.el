@@ -128,7 +128,7 @@ color is added)"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
-(defun grc-ensure-authenticated ()
+(defun grc-req-ensure-authenticated ()
   (when (or
          (null (g-auth-token greader-auth-handle))
          (null (g-auth-cookie-alist greader-auth-handle))
@@ -136,25 +136,27 @@ color is added)"
                       (time-since (g-auth-timestamp greader-auth-handle))))
     (greader-re-authenticate)))
 
-(defun grc-remote-entries (&optional state)
-  "This overrides and hooks into greader.el to get the job done."
-  (let ((g-atom-view-xsl nil)
-        (g-html-handler `grc-parse-response)
-        (greader-state-url-pattern
-         (if (string= "reading-list" state)
-             (concat greader-state-url-pattern
-                     "&xt=user/-/state/com.google/read")
-           greader-state-url-pattern))
-        (greader-number-of-articles grc-fetch-count))
-    (greader-reading-list state)))
+(defun grc-req-get-request (endpoint &optional request)
+  (grc-req-ensure-authenticated)
+  (with-temp-buffer
+    (let ((shell-file-name grc-shell-file-name))
+      (shell-command
+       (format
+        "%s %s %s -X GET '%s' "
+        g-curl-program g-curl-common-options
+        (g-authorization greader-auth-handle)
+        (if (null request)
+            endpoint
+          (concat endpoint "?" request)))
+       (current-buffer)))
+    (goto-char (point-min))
+    (cond
+     ((looking-at "{") (let ((json-array-type 'list))
+                         (json-read)))
+     (t (error "Error %s?%s: " endpoint request)))))
 
-(defun grc-send-edit-request (request)
-  (grc-send-request
-   "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
-   request))
-
-(defun grc-send-request (endpoint request)
-  (grc-ensure-authenticated)
+(defun grc-req-post-request (endpoint request)
+  (grc-req-ensure-authenticated)
   (with-temp-buffer
     (let ((shell-file-name grc-shell-file-name))
       (shell-command
@@ -170,7 +172,40 @@ color is added)"
      ((looking-at "OK") (message "OK"))
      (t (error "Error %s: " request)))))
 
-(defun grc-google-tag-request (entry tag remove)
+(defun grc-req-send-edit-request (request)
+  (grc-req-post-request
+   "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
+   request))
+
+(defvar grc-req-stream-url-pattern
+  "https://www.google.com/reader/api/0/stream/contents/%s")
+
+;; TODO: sharers, n=100, output=json
+(defun grc-req-stream-url (&optional state)
+  (let ((stream-state (if (null state)
+                          ""
+                        (concat "user/-/state/com.google/" state))))
+    (format grc-req-stream-url-pattern stream-state)))
+
+(defun grc-req-format-params (params)
+  (mapconcat (lambda (p) (concat (car p) "=" (cdr p)))
+             params "&"))
+
+(defun grc-req-remote-entries (&optional state)
+  (let ((params `(("n"       . "100")
+                  ("sharers" . ,(grc-req-sharers-hash))
+                  ("client"  . "emacs-grc-client"))))
+    (when (string= state "reading-list")
+      (aput 'params "xt" "user/-/state/com.google/read"))
+    (grc-parse-parse-response
+     (grc-req-get-request (grc-req-stream-url state)
+                          (grc-req-format-params params)))))
+
+;; TODO: doit
+(defun grc-req-sharers-hash ()
+  "CNeog8beARCElIvC_AoQ6IGRkbgCEKvg1JcWELrV6PyrAxCIz_rcggIQo5z87ZcBENe5rra6Ag")
+
+(defun grc-req-tag-request (entry tag remove)
   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
           (if remove "r" "a")
           tag
@@ -178,63 +213,45 @@ color is added)"
           (aget entry 'id)
           (g-auth-token greader-auth-handle)))
 
-(defun grc-total-unread-count ()
+(defun grc-req-total-unread-count ()
   (reduce (lambda (x y)
             (let ((yval (cdr (assoc 'count y))))
               (if (> x yval) x yval)))
           (greader-unread-count) :initial-value 0))
 
-(defun grc-subscriptions ()
+(defun grc-req-subscriptions ()
   (let ((shell-file-name grc-shell-file-name))
     (greader-subscriptions)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Request parsing
-(defun grc-xml-get-child (node child-name)
-  (car (last (assq child-name node))))
+(defun grc-parse-get-categories (json-entry)
+  (remove-if 'null
+             (mapcar (lambda (c)
+                       (let ((label-idx (string-match "/label/" c))
+                             (state-idx (string-match "/state/com.google/" c)))
+                         (cond
+                          (state-idx (substring c (+ state-idx 18)))
+                          (label-idx (substring c (+ label-idx 7))))))
+                     (aget json-entry 'categories))))
 
-(defun grc-xml-get-categories (xml-entry)
-  (remove-if 'empty-string-p
-             (mapcar (lambda (e) (xml-get-attribute e 'label))
-                     (xml-get-children xml-entry 'category))))
+(defun grc-parse-process-entry (json-entry)
+  `((id         . ,(aget json-entry 'id))
+    (date       . ,(aget json-entry 'published))
+    (title      . ,(aget json-entry 'title))
+    ;; TODO: could be many links here...
+    (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
+    (source     . ,(or (aget (first (aget json-entry 'via)) 'title)
+                       (grc-get-in json-entry '(origin title))))
+    (feed       . ,(grc-get-in json-entry '(origin streamId)))
+    (summary    . ,(grc-get-in json-entry '(summary content)))
+    (content    . ,(or (grc-get-in json-entry '(content content))))
+    (categories . ,(grc-parse-get-categories json-entry))))
 
-(defun grc-xml-get-source (xml-entry)
-  "Will extract the souce from the xml-entry.  If it is a shared item, it will
-  extract the source from the link with the title X's shared items"
-  (let* ((categories (grc-xml-get-categories xml-entry))
-         (title (if (or (member "broadcast" categories)
-                        (member "broadcast-friends" categories))
-                    (let ((link (first
-                                 (remove-if-not
-                                  (lambda (e) (string= "via"
-                                                  (xml-get-attribute e 'rel)))
-                                  (xml-get-children xml-entry 'link)))))
-                      (xml-get-attribute link 'title))
-                  (grc-xml-get-child
-                   (first (xml-get-children xml-entry 'source)) 'title))))
-    (if (string= "(title unknown)" title)
-        "Unknown"
-      title)))
-
-(defun grc-process-entry (xml-entry)
-  `((id         . ,(grc-xml-get-child xml-entry 'id))
-    (date       . ,(grc-xml-get-child xml-entry 'published))
-    (title      . ,(grc-xml-get-child xml-entry 'title))
-    (link       . ,(xml-get-attribute (assq 'link xml-entry) 'href))
-    (source     . ,(grc-xml-get-source xml-entry))
-    (feed       . ,(xml-get-attribute (assq 'source xml-entry) 'gr:stream-id))
-    (summary    . ,(grc-xml-get-child xml-entry 'summary))
-    (content    . ,(grc-xml-get-child xml-entry 'content))
-    (categories . ,(grc-xml-get-categories xml-entry))))
-
-(defun grc-parse-response (buffer)
-  (let* ((root (car (xml-parse-region (point-min) (point-max))))
-         (xml-entries (xml-get-children root 'entry))
-         (entries (grc-sort-by (or grc-current-sort grc-default-sort-column)
-                               (mapcar 'grc-process-entry xml-entries)
-                               grc-current-sort-reversed)))
-    (setq grc-xml-entries xml-entries)
-    entries))
+(defun grc-parse-parse-response (root)
+  (setq grc-raw-response root)
+  (let ((entries (aget root 'items)))
+    (mapcar 'grc-parse-process-entry entries)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Highlighting keywords
@@ -328,16 +345,29 @@ color (#rrrrggggbbbb)."
                        :initial-value cats)
                " ")))
 
+(defun grc-title-for-printing (entry title-width)
+  (let ((title (aget entry 'title t))
+        (streamId (aget entry 'feed))
+        (summary (or (aget entry 'content t)
+                     (aget entry 'summary t)))
+        (case-fold-search t))
+    (if title
+        title
+      (if (string-match "post$" streamId)
+          (grc-truncate-text (substring summary 0 (string-match "<br" summary))
+                             title-width t)
+        "No title provided."))))
+
 (defun grc-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
   (let* ((source (grc-prepare-text (aget entry 'source t)))
-         (title (grc-prepare-text (aget entry 'title t)))
          (cats (grc-format-categories entry))
-         (date (date-to-time (aget entry 'date t)))
+         (date (seconds-to-time (aget entry 'date t)))
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
          (static-width (+ 14 2 23 2 2 (length cats) 1))
-         (title-width (- (window-width) static-width)))
+         (title-width (- (window-width) static-width))
+         (title (grc-prepare-text (grc-title-for-printing entry title-width))))
     (insert
      (format "%-14s  %-23s  %s"
              (format-time-string
@@ -369,8 +399,8 @@ color (#rrrrggggbbbb)."
   (let* ((sorted (sort (copy-alist entries)
                        (lambda (a b)
                          (string<
-                          (downcase (aget a field))
-                          (downcase (aget b field))))))
+                          (downcase (grc-string (aget a field)))
+                          (downcase (grc-string (aget b field)))))))
          (sorted (if reverse-result (reverse sorted) sorted)))
     (setq grc-entry-cache sorted)
     sorted))
@@ -392,7 +422,8 @@ color (#rrrrggggbbbb)."
 (defun grc-display-list (entries)
   (let ((inhibit-read-only t))
     (erase-buffer)
-    (mapcar 'grc-print-entry entries)
+    (mapcar 'grc-print-entry
+            (grc-sort-by 'date entries t))
     (grc-highlight-keywords (grc-keywords entries))))
 
 (defvar grc-state-alist '(("Shared"       . "broadcast-friends")
@@ -416,7 +447,7 @@ color (#rrrrggggbbbb)."
 ;; Main entry function
 (defun grc-reading-list (&optional state)
   (interactive "P")
-  (grc-ensure-authenticated)
+  (grc-req-ensure-authenticated)
   (let ((buffer (get-buffer-create grc-list-buffer))
         (state (if (and state (interactive-p))
                    (grc-read-state "State: ")
@@ -424,7 +455,7 @@ color (#rrrrggggbbbb)."
     (setq grc-current-state state)
     (with-current-buffer buffer
       (grc-list-mode)
-      (grc-display-list (grc-remote-entries grc-current-state))
+      (grc-display-list (grc-req-remote-entries grc-current-state))
       (grc-list-header-line)
       (goto-char (point-min))
       (switch-to-buffer buffer))))
@@ -450,14 +481,17 @@ color (#rrrrggggbbbb)."
             (prev-entry (cadr (member entry (reverse grc-entry-cache))))
             (summary (or (aget entry 'content t)
                          (aget entry 'summary t)
-                         "No summary provided.")))
+                         "No summary provided."))
+            (title (or (aget entry 'title))))
 
         (erase-buffer)
         (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
                                          (car lst) (cadr lst))))
                 `(("Title"  ,(aget entry 'title))
                   ("Link"   ,(aget entry 'link))
-                  ("Date"   ,(aget entry 'date))
+                  ("Date"   ,(format-time-string
+                              "%a %m/%d %l:%M %p"
+                              (seconds-to-time (aget entry 'date))))
                   ("Source" ,(aget entry 'source))
                   ("Next Story"
                    ,(if next-entry
@@ -504,8 +538,8 @@ color (#rrrrggggbbbb)."
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-send-edit-request (grc-google-tag-request entry ,tag
-                                                                remove))
+                 (grc-req-send-edit-request (grc-req-google-tag-request entry ,tag
+                                                                        remove))
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
@@ -615,12 +649,12 @@ color (#rrrrggggbbbb)."
                                grc-entry-cache))
          (src (aget (first items) 'feed t)))
 
-    (grc-ensure-authenticated)
-    (grc-send-request "http://www.google.com/reader/api/0/mark-all-as-read"
-                      (format "s=%s&ts=%s&T=%s"
-                              (or src "user/-/state/com.google/reading-list")
-                              (floor (* 1000000 (float-time)))
-                              (g-auth-token greader-auth-handle)))
+    (grc-req-ensure-authenticated)
+    (grc-req-post-request "http://www.google.com/reader/api/0/mark-all-as-read"
+                          (format "s=%s&ts=%s&T=%s"
+                                  (or src "user/-/state/com.google/reading-list")
+                                  (floor (* 1000000 (float-time)))
+                                  (g-auth-token greader-auth-handle)))
     (mapcar (lambda (e) (grc-add-category e "read"))
             (or items grc-entry-cache)))
   (grc-list-refresh))
