@@ -1,11 +1,8 @@
 ;; general
-;; TODO: Switch to
-;; https://www.google.com/reader/api/0/stream/contents/?sharers=CNeog8beARCElIvC_AoQ6IGRkbgCEKvg1JcWELrV6PyrAxCIz_rcggIQo5z87ZcBENe5rra6Ag&n=100
-;; url to get the comments and annotations for the items
-;; need to access https://www.google.com/reader/api/0/friend/list to
+;; TODO: need to access https://www.google.com/reader/api/0/friend/list to
 ;; get to the encodedSharersList to send in...
 ;; This might necessitate leaving greader behind...
-
+;; TODO: Oauth
 
 ;; TODO: Docstrings && help commands
 ;; TODO: refactor downloading and showing - ie, initial dl should call
