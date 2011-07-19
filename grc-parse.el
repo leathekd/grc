@@ -21,7 +21,8 @@
     (feed       . ,(grc-get-in json-entry '(origin streamId)))
     (summary    . ,(grc-get-in json-entry '(summary content)))
     (content    . ,(or (grc-get-in json-entry '(content content))))
-    (categories . ,(grc-parse-get-categories json-entry))))
+    (categories . ,(grc-parse-get-categories json-entry))
+    (comments   . ,(aget json-entry 'comments t))))
 
 (defun grc-parse-parse-response (root)
   (setq grc-raw-response root)

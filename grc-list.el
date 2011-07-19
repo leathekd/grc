@@ -176,6 +176,8 @@
 
     (when (< 0 (length cats))
       (insert (format " (%s)" cats)))
+    (when (aget entry 'comments t)
+      (insert (format " [C]")))
     (insert "\n")))
 
 (defun grc-list-display (entries)
