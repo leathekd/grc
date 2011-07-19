@@ -14,6 +14,8 @@
 ;; TODO: share
 ;; TODO: adding note - edit w/ snippet=note
 ;; TODO: emailing
+;; TODO: feed icons?
+;; TODO: comment icon, user pictures with comments?
 
 ;; List view
 ;; TODO: pagination?
@@ -36,6 +38,13 @@
 (require 'html2text)
 (require 'g-auth)
 (require 'greader)
+
+(require 'grc-lib)
+(require 'grc-req)
+(require 'grc-parse)
+(require 'grc-highlight)
+(require 'grc-list)
+(require 'grc-show)
 
 ;; The default of 4 hours seems to be too long
 (setq g-auth-lifetime "1 hour")
@@ -87,221 +96,6 @@
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
-
-(defface grc-highlight-nick-base-face
-  '((t nil))
-  "Base face used for highlighting nicks in erc. (Before the nick
-color is added)"
-  :group 'grc-faces)
-
-(defvar grc-highlight-face-table
-  (make-hash-table :test 'equal)
-  "The hash table that contains unique grc faces.")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; General purpose functions
-(defun grc-list (thing)
-  "Return THING if THING is a list, or a list with THING as its element."
-  (if (listp thing)
-      thing
-    (list thing)))
-
-(defun grc-string (thing)
-  (if (stringp thing)
-      thing
-    (prin1-to-string thing t)))
-
-(defun grc-flatten (x)
-  (cond ((null x) nil)
-        ((listp x) (append (grc-flatten (car x)) (grc-flatten (cdr x))))
-        (t (list x))))
-
-(defun grc-get-in (alist seq &optional not-found)
-  (let ((val (reduce (lambda (a k)
-                       (aget a k)) seq :initial-value alist)))
-    (if (and (null val) not-found)
-        not-found
-      val)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Google reader requests
-(defun grc-req-ensure-authenticated ()
-  (when (or
-         (null (g-auth-token greader-auth-handle))
-         (null (g-auth-cookie-alist greader-auth-handle))
-         (time-less-p (g-auth-lifetime greader-auth-handle)
-                      (time-since (g-auth-timestamp greader-auth-handle))))
-    (greader-re-authenticate)))
-
-(defun grc-req-get-request (endpoint &optional request)
-  (grc-req-ensure-authenticated)
-  (with-temp-buffer
-    (let ((shell-file-name grc-shell-file-name))
-      (shell-command
-       (format
-        "%s %s %s -X GET '%s' "
-        g-curl-program g-curl-common-options
-        (g-authorization greader-auth-handle)
-        (if (null request)
-            endpoint
-          (concat endpoint "?" request)))
-       (current-buffer)))
-    (goto-char (point-min))
-    (cond
-     ((looking-at "{") (let ((json-array-type 'list))
-                         (json-read)))
-     (t (error "Error %s?%s: " endpoint request)))))
-
-(defun grc-req-post-request (endpoint request)
-  (grc-req-ensure-authenticated)
-  (with-temp-buffer
-    (let ((shell-file-name grc-shell-file-name))
-      (shell-command
-       (format
-        "%s %s %s  -X POST -d '%s' '%s' "
-        g-curl-program g-curl-common-options
-        (g-authorization greader-auth-handle)
-        request
-        endpoint)
-       (current-buffer)))
-    (goto-char (point-min))
-    (cond
-     ((looking-at "OK") (message "OK"))
-     (t (error "Error %s: " request)))))
-
-(defun grc-req-send-edit-request (request)
-  (grc-req-post-request
-   "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
-   request))
-
-(defvar grc-req-stream-url-pattern
-  "https://www.google.com/reader/api/0/stream/contents/%s")
-
-;; TODO: sharers, n=100, output=json
-(defun grc-req-stream-url (&optional state)
-  (let ((stream-state (if (null state)
-                          ""
-                        (concat "user/-/state/com.google/" state))))
-    (format grc-req-stream-url-pattern stream-state)))
-
-(defun grc-req-format-params (params)
-  (mapconcat (lambda (p) (concat (car p) "=" (cdr p)))
-             params "&"))
-
-(defun grc-req-remote-entries (&optional state)
-  (let ((params `(("n"       . "100")
-                  ("sharers" . ,(grc-req-sharers-hash))
-                  ("client"  . "emacs-grc-client"))))
-    (when (string= state "reading-list")
-      (aput 'params "xt" "user/-/state/com.google/read"))
-    (grc-parse-parse-response
-     (grc-req-get-request (grc-req-stream-url state)
-                          (grc-req-format-params params)))))
-
-;; TODO: doit
-(defun grc-req-sharers-hash ()
-  "CNeog8beARCElIvC_AoQ6IGRkbgCEKvg1JcWELrV6PyrAxCIz_rcggIQo5z87ZcBENe5rra6Ag")
-
-(defun grc-req-tag-request (entry tag remove)
-  (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
-          (if remove "r" "a")
-          tag
-          (aget entry 'feed)
-          (aget entry 'id)
-          (g-auth-token greader-auth-handle)))
-
-(defun grc-req-total-unread-count ()
-  (reduce (lambda (x y)
-            (let ((yval (cdr (assoc 'count y))))
-              (if (> x yval) x yval)))
-          (greader-unread-count) :initial-value 0))
-
-(defun grc-req-subscriptions ()
-  (let ((shell-file-name grc-shell-file-name))
-    (greader-subscriptions)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Request parsing
-(defun grc-parse-get-categories (json-entry)
-  (remove-if 'null
-             (mapcar (lambda (c)
-                       (let ((label-idx (string-match "/label/" c))
-                             (state-idx (string-match "/state/com.google/" c)))
-                         (cond
-                          (state-idx (substring c (+ state-idx 18)))
-                          (label-idx (substring c (+ label-idx 7))))))
-                     (aget json-entry 'categories))))
-
-(defun grc-parse-process-entry (json-entry)
-  `((id         . ,(aget json-entry 'id))
-    (date       . ,(aget json-entry 'published))
-    (title      . ,(aget json-entry 'title))
-    ;; TODO: could be many links here...
-    (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
-    (source     . ,(or (aget (first (aget json-entry 'via)) 'title)
-                       (grc-get-in json-entry '(origin title))))
-    (feed       . ,(grc-get-in json-entry '(origin streamId)))
-    (summary    . ,(grc-get-in json-entry '(summary content)))
-    (content    . ,(or (grc-get-in json-entry '(content content))))
-    (categories . ,(grc-parse-get-categories json-entry))))
-
-(defun grc-parse-parse-response (root)
-  (setq grc-raw-response root)
-  (let ((entries (aget root 'items)))
-    (mapcar 'grc-parse-process-entry entries)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Highlighting keywords
-(defun grc-hexcolor-luminance (color)
-  "Returns the luminance of color COLOR. COLOR is a string \(e.g.
-\"#ffaa00\", \"blue\"\) `color-values' accepts. Luminance is a
-value of 0.299 red + 0.587 green + 0.114 blue and is always
-between 0 and 255."
-  (let* ((values (x-color-values color))
-         (r (car values))
-         (g (car (cdr values)))
-         (b (car (cdr (cdr values)))))
-    (floor (+ (* 0.299 r) (* 0.587 g) (* 0.114 b)) 256)))
-
-(defun grc-invert-color (color)
-  "Returns the inverted color of COLOR."
-  (let* ((values (x-color-values color))
-         (r (car values))
-         (g (car (cdr values)))
-         (b (car (cdr (cdr values)))))
-    (format "#%04x%04x%04x"
-            (- 65535 r) (- 65535 g) (- 65535 b))))
-
-;;;###autoload
-(defun grc-highlight-keywords (keywords)
-  "Searches for nicknames and highlights them. Uses the first
-twelve digits of the MD5 message digest of the nickname as
-color (#rrrrggggbbbb)."
-  (let (bounds word color new-kw-face kw (case-fold-search nil))
-    (while keywords
-      (goto-char (point-min))
-      (setq kw (car keywords))
-      (while (search-forward kw nil t)
-        (setq bounds `(,(point) . ,(- (point) (length kw))))
-        (setq word (buffer-substring-no-properties
-                    (car bounds) (cdr bounds)))
-        (setq new-kw-face (gethash word grc-highlight-face-table))
-        (unless new-kw-face
-          (setq color (concat "#" (substring (md5 (downcase word)) 0 12)))
-          (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
-              ;; if too dark for background
-              (when (< (grc-hexcolor-luminance color) 85)
-                (setq color (grc-invert-color color)))
-            ;; if to bright for background
-            (when (> (grc-hexcolor-luminance color) 170)
-              (setq color (grc-invert-color color))))
-          (setq new-kw-face (make-symbol (concat "grc-highlight-nick-"
-                                                 word "-face")))
-          (copy-face 'grc-highlight-nick-base-face new-kw-face)
-          (set-face-foreground new-kw-face color)
-          (puthash word new-kw-face grc-highlight-face-table))
-        (put-text-property (car bounds) (cdr bounds) 'face new-kw-face))
-      (setq keywords (cdr keywords)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -355,30 +149,6 @@ color (#rrrrggggbbbb)."
                              title-width t)
         "No title provided."))))
 
-(defun grc-print-entry (entry)
-  "Takes an entry and formats it into the line that'll appear on the list view"
-  (let* ((source (grc-prepare-text (aget entry 'source t)))
-         (cats (grc-format-categories entry))
-         (date (seconds-to-time (aget entry 'date t)))
-         (one-week (- (float-time (current-time))
-                      (* 60 60 24 7)))
-         (static-width (+ 14 2 23 2 2 (length cats) 1))
-         (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry title-width))))
-    (insert
-     (format "%-14s  %-23s  %s"
-             (format-time-string
-              (if (> one-week (float-time date))
-                  "%m/%d %l:%M %p"
-                "  %a %l:%M %p")
-              date)
-             (grc-truncate-text source 23 t)
-             (grc-truncate-text title title-width t)))
-
-    (when (< 0 (length cats))
-      (insert (format " (%s)" cats)))
-    (insert "\n")))
-
 (defun grc-group-by (field entries)
   (let* ((groups (remq nil (remove-duplicates
                             (mapcar (lambda (x) (aget x field t)) entries)
@@ -416,12 +186,7 @@ color (#rrrrggggbbbb)."
              (mapcar (lambda (e) (grc-truncate-text
                              (aget e 'source) 22 t)) entries)))))
 
-(defun grc-display-list (entries)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (mapcar 'grc-print-entry
-            (grc-sort-by 'date entries t))
-    (grc-highlight-keywords (grc-keywords entries))))
+
 
 (defvar grc-state-alist '(("Shared"       . "broadcast-friends")
                           ("Kept Unread"  . "kept-unread")
@@ -452,7 +217,7 @@ color (#rrrrggggbbbb)."
     (setq grc-current-state state)
     (with-current-buffer buffer
       (grc-list-mode)
-      (grc-display-list (grc-req-remote-entries grc-current-state))
+      (grc-list-display (grc-req-remote-entries grc-current-state))
       (grc-list-header-line)
       (goto-char (point-min))
       (switch-to-buffer buffer))))
@@ -565,228 +330,4 @@ color (#rrrrggggbbbb)."
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; List view functions
-(defun grc-list-get-current-entry ()
-  "utility function to get the entry from the current line in list view"
-  (nth (- (line-number-at-pos) 1) grc-entry-cache))
-
-(defun grc-list-next-entry ()
-  (interactive)
-  (next-line)
-  (move-beginning-of-line nil))
-
-(defun grc-list-previous-entry ()
-  (interactive)
-  (previous-line)
-  (move-beginning-of-line nil))
-
-(defun grc-list-header-line ()
-  (setq header-line-format
-        (format "Google Reader Client for %s  Viewing: %s  Sort: %s %s"
-                greader-user-email (car (rassoc grc-current-state
-                                                grc-state-alist))
-                (capitalize (symbol-name (or grc-current-sort
-                                             grc-default-sort-column)))
-                (if grc-current-sort-reversed
-                    "Descending" "Ascending"))))
-
-(defun grc-list-refresh ()
-  (with-current-buffer grc-list-buffer
-    (grc-list-header-line)
-    (let ((line (1- (line-number-at-pos))))
-      (grc-display-list grc-entry-cache)
-      (goto-char (point-min))
-      (forward-line line))))
-
-(defun grc-list-help ()
-  ;;TODO
-  (interactive)
-  )
-
-(defun grc-list-view-external ()
-  "Open the current rss entry in the default emacs browser"
-  (interactive)
-  (grc-view-external (grc-list-get-current-entry))
-  (grc-list-refresh))
-
-(defun grc-list-mark-fn (tag)
-  `(lambda (&optional remove)
-     (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry) remove)
-     (grc-list-next-entry)
-     (grc-list-refresh)))
-
-(defun grc-list-mark-read ()
-  (interactive)
-  (funcall (grc-list-mark-fn "read")))
-
-(defun grc-list-mark-read-and-remove ()
-  (interactive)
-  (grc-mark-read-and-remove (grc-list-get-current-entry))
-  (grc-list-refresh))
-
-(defun grc-list-mark-kept-unread (remove)
-  (interactive "P")
-  (funcall (grc-list-mark-fn "kept-unread") remove))
-
-(defun grc-list-mark-starred (remove)
-  (interactive "P")
-  (funcall (grc-list-mark-fn "starred") remove))
-
-(defun grc-list-mark-all-read (feed)
-  (interactive "P")
-  (let* ((feed-name (when (and feed (interactive-p))
-                      (ido-completing-read "Feed: "
-                                           (mapcar (lambda (e) (aget e
-                                                                'source t))
-                                                   grc-entry-cache)
-                                           nil t)))
-         (items (remove-if-not (lambda (e) (string= feed-name
-                                               (aget e 'source t)))
-                               grc-entry-cache))
-         (src (aget (first items) 'feed t)))
-
-    (grc-req-ensure-authenticated)
-    (grc-req-post-request "http://www.google.com/reader/api/0/mark-all-as-read"
-                          (format "s=%s&ts=%s&T=%s"
-                                  (or src "user/-/state/com.google/reading-list")
-                                  (floor (* 1000000 (float-time)))
-                                  (g-auth-token greader-auth-handle)))
-    (mapcar (lambda (e) (grc-add-category e "read"))
-            (or items grc-entry-cache)))
-  (grc-list-refresh))
-
-(defun grc-list-show-entry ()
-  (interactive)
-  (grc-show-entry (grc-list-get-current-entry)))
-
-(defun grc-list-sort ()
-  (interactive)
-  (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
-                       grc-default-sort-column)))
-    (setq grc-current-sort-reversed (not grc-current-sort-reversed))
-    (when (not grc-current-sort-reversed)
-      (setq grc-current-sort next-sort))
-    (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed)
-    (grc-list-refresh)))
-
-(defvar grc-list-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "q"         'grc-kill-this-buffer)
-    (define-key map "?"         'grc-list-help)
-    (define-key map "k"         'grc-list-mark-kept-unread)
-    (define-key map "r"         'grc-list-mark-read)
-    (define-key map "x"         'grc-list-mark-read-and-remove)
-    (define-key map "s"         'grc-list-mark-starred)
-    (define-key map "n"         'grc-list-next-entry)
-    (define-key map "p"         'grc-list-previous-entry)
-    (define-key map " "         'grc-list-show-entry)
-    (define-key map (kbd "RET") 'grc-list-show-entry)
-    (define-key map "o"         'grc-list-sort)
-    (define-key map "v"         'grc-list-view-external)
-    (define-key map "g"         'grc-reading-list)
-    map)
-  "Keymap for \"grc list\" buffers.")
-(fset 'grc-list-mode-map grc-list-mode-map)
-
-(defun grc-list-mode ()
-  "Major mode for viewing feeds with grc
-
-  This buffer contains the results of the \"grc-reading-list\" command
-  for displaying unread feeds from Google Reader.
-
-  All currently available key bindings:
-
-  \\{grc-list-mode-map}"
-  (interactive)
-  (kill-all-local-variables)
-  (use-local-map grc-list-mode-map)
-  (setq major-mode 'grc-list-mode
-        mode-name "grc-list")
-  (setq buffer-read-only t)
-  (hl-line-mode grc-enable-hl-line))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Show functions
-(defun grc-show-help ()
-  ;;TODO
-  (interactive)
-  )
-
-(defun grc-show-mark-kept-unread (remove)
-  (interactive "P")
-  (funcall (grc-mark-fn "kept-unread") grc-current-entry remove))
-
-(defun grc-show-mark-starred (remove)
-  (interactive "P")
-  (funcall (grc-mark-fn "starred") grc-current-entry remove))
-
-(defun grc-show-kill-this-buffer ()
-  (interactive)
-  (when (get-buffer grc-list-buffer)
-    (switch-to-buffer (get-buffer grc-list-buffer))
-    (kill-buffer grc-show-buffer)))
-
-(defun grc-show-next-entry ()
-  (interactive)
-  (let ((entry (cadr (member grc-current-entry grc-entry-cache))))
-    (if entry
-        (progn
-          (grc-show-entry entry)
-          (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
-            (forward-line)))
-      (error "No more entries"))))
-
-(defun grc-show-previous-entry ()
-  (interactive)
-  (let ((entry (cadr (member grc-current-entry (reverse grc-entry-cache)))))
-    (if entry
-        (progn
-          (grc-show-entry entry)
-          (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
-            (forward-line -1)))
-      (error "No previous entries"))))
-
-(defun grc-show-view-external ()
-  (interactive)
-  (grc-view-external grc-current-entry))
-
-(defun grc-show-advance-or-show-next-entry ()
-  (interactive)
-  (if (eobp)
-      (grc-show-next-entry)
-    (let ((scroll-error-top-bottom t))
-      (scroll-up-command 25))))
-
-(defvar grc-show-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map " " 'grc-show-advance-or-show-next-entry)
-    (define-key map "?" 'grc-show-help)
-    (define-key map "q" 'grc-show-kill-this-buffer)
-    (define-key map "k" 'grc-show-mark-kept-unread)
-    (define-key map "s" 'grc-show-mark-starred)
-    (define-key map "n" 'grc-show-next-entry)
-    (define-key map "p" 'grc-show-previous-entry)
-    (define-key map "v" 'grc-show-view-external)
-    (when (featurep 'w3m)
-      (define-key map (kbd "RET")   'w3m-external-view-this-url)
-      (define-key map (kbd "TAB")   'w3m-next-anchor)
-      (define-key map (kbd "S-TAB") 'w3m-previous-anchor))
-    map)
-  "Keymap for \"grc show\" buffers.")
-(fset 'grc-show-mode-map grc-show-mode-map)
-
-(defun grc-show-mode ()
-  "Major mode for viewing a feed entry in grc
-
-\\{grc-show-mode-map}"
-  (interactive)
-  (kill-all-local-variables)
-  (use-local-map grc-show-mode-map)
-  (setq major-mode 'grc-show-mode
-        mode-name "grc-show")
-  (setq buffer-read-only t)
-  (when (featurep 'w3m)
-    (setq w3m-display-inline-images t)))
+(provide 'grc)
