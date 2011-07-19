@@ -95,7 +95,6 @@
                  (const :tag "Source" 'source)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
-(defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -233,48 +232,6 @@
 (defun grc-entry-index (entry)
   (- (length grc-entry-cache)
      (length (member entry grc-entry-cache))))
-
-(defun grc-show-entry (entry)
-  (let ((buffer (get-buffer-create grc-show-buffer)))
-    (with-current-buffer buffer
-      (grc-show-mode)
-      (let ((inhibit-read-only t)
-            (next-entry (cadr (member entry grc-entry-cache)))
-            (prev-entry (cadr (member entry (reverse grc-entry-cache))))
-            (summary (or (aget entry 'content t)
-                         (aget entry 'summary t)
-                         "No summary provided."))
-            (title (or (aget entry 'title))))
-
-        (erase-buffer)
-        (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
-                                         (car lst) (cadr lst))))
-                `(("Title"  ,(aget entry 'title))
-                  ("Link"   ,(aget entry 'link))
-                  ("Date"   ,(format-time-string
-                              "%a %m/%d %l:%M %p"
-                              (seconds-to-time (aget entry 'date))))
-                  ("Source" ,(aget entry 'source))
-                  ("Next Story"
-                   ,(if next-entry
-                        (concat (aget next-entry 'title)
-                                " from "
-                                (aget next-entry 'source))
-                      "None"))
-                  ("Previous Story"
-                   ,(if prev-entry
-                        (concat (aget prev-entry 'title)
-                                " from "
-                                (aget prev-entry 'source))
-                      "None"))))
-        (insert "<br/>" summary)
-        (if (featurep 'w3m)
-            (w3m-buffer)
-          (html2text))
-        (grc-highlight-keywords (grc-keywords grc-entry-cache))))
-    (setq grc-current-entry (grc-mark-read entry))
-    (switch-to-buffer buffer)
-    (grc-list-refresh)))
 
 (defun grc-add-category (entry category)
   (let ((mem (member entry grc-entry-cache)))

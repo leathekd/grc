@@ -1,5 +1,64 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Show functions
+(defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
+
+(defun grc-show-print-comment (comment)
+  (insert (format "%s - %s<br/>%s<br/><br/>"
+                  (aget comment 'author)
+                  (format-time-string
+                   "%a %m/%d %l:%M %p"
+                   (seconds-to-time (aget comment 'createdTime)))
+                  (or (aget comment 'htmlContent)
+                      (aget comment 'plainContent)))))
+
+(defun grc-show-entry (entry)
+  (let ((buffer (get-buffer-create grc-show-buffer)))
+    (with-current-buffer buffer
+      (grc-show-mode)
+      (let ((inhibit-read-only t)
+            (next-entry (cadr (member entry grc-entry-cache)))
+            (prev-entry (cadr (member entry (reverse grc-entry-cache))))
+            (summary (or (aget entry 'content t)
+                         (aget entry 'summary t)
+                         "No summary provided."))
+            (title (or (aget entry 'title))))
+
+        (erase-buffer)
+        (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
+                                         (car lst) (cadr lst))))
+                `(("Title"  ,(aget entry 'title))
+                  ("Link"   ,(aget entry 'link))
+                  ("Date"   ,(format-time-string
+                              "%a %m/%d %l:%M %p"
+                              (seconds-to-time (aget entry 'date))))
+                  ("Source" ,(aget entry 'source))
+                  ("Next Story"
+                   ,(if next-entry
+                        (concat (aget next-entry 'title)
+                                " from "
+                                (aget next-entry 'source))
+                      "None"))
+                  ("Previous Story"
+                   ,(if prev-entry
+                        (concat (aget prev-entry 'title)
+                                " from "
+                                (aget prev-entry 'source))
+                      "None"))))
+        (insert "<br/>" summary)
+
+        (when (aget entry 'comments t)
+          (insert "<br/><br/>Comments:<br/>")
+          (mapcar 'grc-show-print-comment
+                  (grc-sort-by 'createdTime (aget entry 'comments))))
+
+        (if (featurep 'w3m)
+            (w3m-buffer)
+          (html2text))
+        (grc-highlight-keywords (grc-keywords grc-entry-cache))))
+    (setq grc-current-entry (grc-mark-read entry))
+    (switch-to-buffer buffer)
+    (grc-list-refresh)))
+
 (defun grc-show-help ()
   ;;TODO
   (interactive)
