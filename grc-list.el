@@ -1,5 +1,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
+(defvar grc-sort-columns '(date source))
+(defvar grc-current-sort nil)
+(defvar grc-current-sort-reversed nil)
+(defcustom grc-default-sort-column 'date
+  "Default column by which to sort the list view"
+  :group 'grc
+  :type '(choice (const :tag "Date" 'date)
+                 (const :tag "Source" 'source)))
+
+(defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"
   (nth (- (line-number-at-pos) 1) grc-entry-cache))

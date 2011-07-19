@@ -81,20 +81,10 @@
     ("tracking-mobile-read"    . "Tracking Mobile Read"))
   "list of the categories that google adds to entries")
 
-(defvar grc-entry-cache nil)
-(defvar grc-current-entry nil)
 (defvar grc-current-state "reading-list")
 
-(defvar grc-sort-columns '(date source))
-(defvar grc-current-sort nil)
-(defvar grc-current-sort-reversed nil)
-(defcustom grc-default-sort-column 'date
-  "Default column by which to sort the list view"
-  :group 'grc
-  :type '(choice (const :tag "Date" 'date)
-                 (const :tag "Source" 'source)))
-
-(defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+(defvar grc-entry-cache nil)
+(defvar grc-current-entry nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
