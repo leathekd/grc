@@ -39,7 +39,7 @@
   (with-current-buffer grc-list-buffer
     (grc-list-header-line)
     (let ((line (1- (line-number-at-pos))))
-      (grc-display-list grc-entry-cache)
+      (grc-list-display grc-entry-cache)
       (goto-char (point-min))
       (forward-line line))))
 
