@@ -94,13 +94,17 @@
   (grc-show-entry (grc-list-get-current-entry)))
 
 (defun grc-list-sort ()
+  "Interactive function to cycle through sort states:
+
+  Date Asc, Date Desc, Source Asc, Source Desc"
   (interactive)
   (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
                        grc-default-sort-column)))
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
-    (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed)
+    (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed))
+
     (grc-list-refresh)))
 
 (defvar grc-list-mode-map
@@ -166,8 +170,9 @@
 (defun grc-list-display (entries)
   (let ((inhibit-read-only t))
     (erase-buffer)
+    (setq grc-entry-cache (grc-sort-by 'date entries t))
     (mapcar 'grc-list-print-entry
-            (grc-sort-by 'date entries t))
+            grc-entry-cache)
     (grc-highlight-keywords (grc-keywords entries))))
 
 (provide 'grc-list)
