@@ -81,6 +81,8 @@
     ("tracking-mobile-read"    . "Tracking Mobile Read"))
   "list of the categories that google adds to entries")
 
+(defvar grc-state-alist '("Shared" "Kept Unread" "Read"
+                          "Reading List" "Starred"))
 (defvar grc-current-state "reading-list")
 
 (defvar grc-entry-cache nil)
@@ -152,25 +154,16 @@
              (mapcar (lambda (e) (grc-truncate-text
                              (aget e 'source) 22 t)) entries)))))
 
-
-
-(defvar grc-state-alist '(("Shared"       . "broadcast-friends")
-                          ("Kept Unread"  . "kept-unread")
-                          ("Read"         . "read")
-                          ("Reading List" . "reading-list")
-                          ("Starred"      . "starred")))
-
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
-  (let* ((grc-read-history '())
-         (greader-state-alist grc-state-alist)
-         (choices (sort (mapcar 'car greader-state-alist) 'string<))
-         (completing-read-fn (if (featurep 'ido)
-                                 'ido-completing-read
-                               'completing-read))
-         (selection (apply completing-read-fn prompt choices
-                           nil 'require-match nil grc-read-history)))
-    (aget greader-state-alist selection)))
+  (let ((grc-read-history '())
+        (choices (sort grc-state-alist 'string<))
+        (completing-read-fn (if (featurep 'ido)
+                                'ido-completing-read
+                              'completing-read)))
+    (cdr (rassoc (apply completing-read-fn prompt choices
+                        nil 'require-match nil grc-read-history)
+                 grc-google-categories))))
 
 ;; Main entry function
 (defun grc-reading-list (&optional state)
