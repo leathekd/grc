@@ -148,29 +148,6 @@
                              title-width t)
         "No title provided."))))
 
-(defun grc-group-by (field entries)
-  (let* ((groups (remq nil (remove-duplicates
-                            (mapcar (lambda (x) (aget x field t)) entries)
-                            :test 'string=)))
-         (ret-list '()))
-    (amake 'ret-list groups)
-    (mapcar (lambda (entry)
-              (let* ((k (aget entry field t))
-                     (v (aget ret-list k t)))
-                (aput 'ret-list k (cons entry v))))
-            entries)
-    ret-list))
-
-(defun grc-sort-by (field entries &optional reverse-result)
-  (let* ((sorted (sort (copy-alist entries)
-                       (lambda (a b)
-                         (string<
-                          (downcase (grc-string (aget a field)))
-                          (downcase (grc-string (aget b field)))))))
-         (sorted (if reverse-result (reverse sorted) sorted)))
-    (setq grc-entry-cache sorted)
-    sorted))
-
 (defun grc-keywords (entries)
   ;; TODO: too convoluted- simplify
   ;;       this gets all the cats across entries, flattens to one
