@@ -11,6 +11,46 @@
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 
+(defun grc-list-print-entry (entry)
+  "Takes an entry and formats it into the line that'll appear on the list view"
+  (let* ((source (grc-prepare-text (aget entry 'source t)))
+         (cats (grc-format-categories entry))
+         (date (seconds-to-time (aget entry 'date t)))
+         (one-week (- (float-time (current-time))
+                      (* 60 60 24 7)))
+         (static-width (+ 14 2 23 2 2
+                          (length cats)
+                          (if (aget entry 'comments t) 3 0)
+                          1))
+         (title-width (- (window-width) static-width))
+         (title (grc-prepare-text (grc-title-for-printing entry title-width))))
+    (insert
+     (format "%-14s  %-23s  %s"
+             (format-time-string
+              (if (> one-week (float-time date))
+                  "%m/%d %l:%M %p"
+                "  %a %l:%M %p")
+              date)
+             (grc-truncate-text source 23 t)
+             (grc-truncate-text title title-width t)))
+
+    (when (< 0 (length cats))
+      (insert (format " (%s)" cats)))
+    (when (aget entry 'comments t)
+      (insert (format " [C]")))
+    (insert "\n")))
+
+(defun grc-list-display (entries)
+  (with-current-buffer (get-buffer-create grc-list-buffer)
+    (let ((inhibit-read-only t))
+      (grc-list-mode)
+      (grc-list-header-line)
+      (erase-buffer)
+      (setq grc-entry-cache (grc-sort-by 'date entries t 'title))
+      (mapcar 'grc-list-print-entry grc-entry-cache)
+      (grc-highlight-keywords (grc-keywords entries))
+      (goto-char (point-min)))))
+
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"
   (nth (- (line-number-at-pos) 1) grc-entry-cache))
@@ -114,7 +154,8 @@
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
-    (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache grc-current-sort-reversed))
+    (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
+                                       grc-current-sort-reversed 'title))
 
     (grc-list-refresh)))
 
@@ -153,39 +194,5 @@
         mode-name "grc-list")
   (setq buffer-read-only t)
   (hl-line-mode grc-enable-hl-line))
-
-(defun grc-list-print-entry (entry)
-  "Takes an entry and formats it into the line that'll appear on the list view"
-  (let* ((source (grc-prepare-text (aget entry 'source t)))
-         (cats (grc-format-categories entry))
-         (date (seconds-to-time (aget entry 'date t)))
-         (one-week (- (float-time (current-time))
-                      (* 60 60 24 7)))
-         (static-width (+ 14 2 23 2 2 (length cats) 1))
-         (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry title-width))))
-    (insert
-     (format "%-14s  %-23s  %s"
-             (format-time-string
-              (if (> one-week (float-time date))
-                  "%m/%d %l:%M %p"
-                "  %a %l:%M %p")
-              date)
-             (grc-truncate-text source 23 t)
-             (grc-truncate-text title title-width t)))
-
-    (when (< 0 (length cats))
-      (insert (format " (%s)" cats)))
-    (when (aget entry 'comments t)
-      (insert (format " [C]")))
-    (insert "\n")))
-
-(defun grc-list-display (entries)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (setq grc-entry-cache (grc-sort-by 'date entries t))
-    (mapcar 'grc-list-print-entry
-            grc-entry-cache)
-    (grc-highlight-keywords (grc-keywords entries))))
 
 (provide 'grc-list)

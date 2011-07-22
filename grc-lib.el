@@ -23,12 +23,21 @@
         not-found
       val)))
 
-(defun grc-sort-by (field entries &optional reverse-result)
+(defun grc-sort-by (field entries &optional reverse-result secondary-field)
   (let* ((sorted (sort (copy-alist entries)
                        (lambda (a b)
-                         (string<
-                          (downcase (grc-string (aget a field)))
-                          (downcase (grc-string (aget b field)))))))
+                         (let ((result (compare-strings
+                                        (grc-string (aget a field)) 0 nil
+                                        (grc-string (aget b field)) 0 nil t)))
+                           (cond
+                            ((and secondary-field
+                                  (eq result t))
+                             (string<
+                              (downcase (grc-string (aget a secondary-field)))
+                              (downcase (grc-string (aget b secondary-field)))))
+                            ((> result 0) nil)
+                            ((< result 0) t)
+                            (t nil))))))
          (sorted (if reverse-result (reverse sorted) sorted)))
     sorted))
 
