@@ -1,48 +1,79 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
-(defun grc-req-ensure-authenticated ()
-  (when (or
-         (null (g-auth-token greader-auth-handle))
-         (null (g-auth-cookie-alist greader-auth-handle))
-         (time-less-p (g-auth-lifetime greader-auth-handle)
-                      (time-since (g-auth-timestamp greader-auth-handle))))
-    (greader-re-authenticate)))
+(require 'grc)
+(require 'grc-auth)
 
-(defun grc-req-get-request (endpoint &optional request)
-  (grc-req-ensure-authenticated)
-  (with-temp-buffer
-    (let ((shell-file-name grc-shell-file-name))
-      (shell-command
-       (format
-        "%s %s %s -X GET '%s' "
-        g-curl-program g-curl-common-options
-        (g-authorization greader-auth-handle)
-        (if (null request)
-            endpoint
-          (concat endpoint "?" request)))
-       (current-buffer)))
-    (goto-char (point-min))
-    (cond
-     ((looking-at "{") (let ((json-array-type 'list))
-                         (json-read)))
-     (t (error "Error %s?%s: " endpoint request)))))
+(defvar grc-auth-header-format
+  "--header 'Authorization: OAuth %s'"
+  "HTTP authorization headers to send.")
 
-(defun grc-req-post-request (endpoint request)
-  (grc-req-ensure-authenticated)
-  (with-temp-buffer
-    (let ((shell-file-name grc-shell-file-name))
-      (shell-command
-       (format
-        "%s %s %s  -X POST -d '%s' '%s' "
-        g-curl-program g-curl-common-options
-        (g-authorization greader-auth-handle)
-        request
-        endpoint)
-       (current-buffer)))
-    (goto-char (point-min))
-    (cond
-     ((looking-at "OK") (message "OK"))
-     (t (error "Error %s: " request)))))
+(defvar grc-req-base-url
+  "http://www.google.com/reader/"
+  "Base URL for Google Reader  API.")
+
+(defvar grc-req-subscribed-feed-list-url
+  (concat greader-base-url
+          "api/0/subscription/list?output=json")
+  "URL for retrieving list of subscribed feeds.")
+
+(defvar grc-req-unread-count-url
+  (concat greader-base-url
+          "api/0/unread-count?all=true&output=json")
+  "URL for retrieving unread counts for subscribed  feeds.")
+
+(defcustom grc-curl-program "/usr/bin/curl"
+  "Full path of the curl executable"
+  :group 'grc
+  :type 'string)
+
+(defcustom grc-curl-options
+  "--compressed --silent"
+  "Options to pass to all grc curl requests"
+  :group 'grc
+  :type 'string)
+
+(defun grc-req-auth-header ()
+  (format grc-auth-header-format
+          (aget grc-auth-access-token 'token)))
+
+(defun grc-req-get-request (endpoint &optional request no-auth raw-get)
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (with-current-buffer (get-buffer-create "*grc-request*")
+    (let ((command (format
+                    "%s %s %s -X GET '%s' "
+                    grc-curl-program grc-curl-options
+                    (if no-auth "" (grc-req-auth-header))
+                    (if request
+                        (concat endpoint "?" request)
+                      endpoint))))
+      (shell-command command (current-buffer))
+      (goto-char (point-min))
+      (bury-buffer)
+      (cond
+       (raw-get (buffer-substring-no-properties (point-min) (point-max)))
+       ((looking-at "{") (let ((json-array-type 'list))
+                           (json-read)))
+       ((looking-at "OK") "OK")
+       (t (error "Error fetching: %s?%s\nFull command: %s"
+                 endpoint request command))))))
+
+(defun grc-req-post-request (endpoint request &optional no-auth)
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (with-current-buffer (get-buffer-create "*grc-request*")
+    (let ((command (format
+                    "%s %s %s  -X POST -d '%s' '%s' "
+                    grc-curl-program grc-curl-options
+                    (if no-auth "" (grc-req-auth-header))
+                    request
+                    endpoint)))
+      (shell-command command (current-buffer))
+      (goto-char (point-min))
+      (bury-buffer)
+      (cond
+       ((looking-at "{") (let ((json-array-type 'list))
+                           (json-read)))
+       ((looking-at "OK") "OK")
+       (t (error "Error requesting: %s\nFull command: %s " request command))))))
 
 (defun grc-req-send-edit-request (request)
   (grc-req-post-request
@@ -50,7 +81,7 @@
    request))
 
 (defvar grc-req-stream-url-pattern
-  "https://www.google.com/reader/api/0/stream/contents/%s")
+  "http://www.google.com/reader/api/0/stream/contents/%s")
 
 ;; TODO: sharers, n=100, output=json
 (defun grc-req-stream-url (&optional state)
@@ -73,26 +104,36 @@
      (grc-req-get-request (grc-req-stream-url state)
                           (grc-req-format-params params)))))
 
-;; TODO: doit
+(defun grc-req-friends ()
+  (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"
+                       "output=json"))
+
+(defvar grc-req-sharers-hash-val nil "caches the value of the sharers hash")
 (defun grc-req-sharers-hash ()
-  "CNeog8beARCElIvC_AoQ6IGRkbgCEKvg1JcWELrV6PyrAxCIz_rcggIQo5z87ZcBENe5rra6Ag")
+  (or grc-req-sharers-hash-val
+      (setq grc-req-sharers-hash-val
+            (aget (grc-req-friends) 'encodedSharersList))))
 
 (defun grc-req-tag-request (entry tag remove)
+  (grc-auth-ensure-authenticated)
   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
           (if remove "r" "a")
           tag
           (aget entry 'feed)
           (aget entry 'id)
-          (g-auth-token greader-auth-handle)))
+          (grc-auth-get-action-token)))
 
-(defun grc-req-total-unread-count ()
-  (reduce (lambda (x y)
-            (let ((yval (cdr (assoc 'count y))))
-              (if (> x yval) x yval)))
-          (greader-unread-count) :initial-value 0))
+(defun grc-req-mark-all-read (src)
+  (grc-auth-ensure-authenticated)
+  (grc-req-post-request
+   "http://www.google.com/reader/api/0/mark-all-as-read"
+   (format "s=%s&ts=%s&T=%s"
+           (or src "user/-/state/com.google/reading-list")
+           (floor (* 1000000 (float-time)))
+           (grc-auth-get-action-token))))
 
+;; TODO: replace greader stuff
 (defun grc-req-subscriptions ()
-  (let ((shell-file-name grc-shell-file-name))
-    (greader-subscriptions)))
+  (grc-req-get-request grc-req-subscribed-feed-list-url))
 
 (provide 'grc-req)

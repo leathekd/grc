@@ -1,3 +1,6 @@
+(require 'grc)
+(require 'grc-req)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
 (defvar grc-sort-columns '(date source))
@@ -129,13 +132,7 @@
                                                (aget e 'source t)))
                                grc-entry-cache))
          (src (aget (first items) 'feed t)))
-
-    (grc-req-ensure-authenticated)
-    (grc-req-post-request "http://www.google.com/reader/api/0/mark-all-as-read"
-                          (format "s=%s&ts=%s&T=%s"
-                                  (or src "user/-/state/com.google/reading-list")
-                                  (floor (* 1000000 (float-time)))
-                                  (g-auth-token greader-auth-handle)))
+    (grc-req-mark-all-read src)
     (mapcar (lambda (e) (grc-add-category e "read"))
             (or items grc-entry-cache)))
   (grc-list-refresh))

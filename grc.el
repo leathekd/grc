@@ -1,7 +1,5 @@
 (require 'cl)
 (require 'html2text)
-(require 'g-auth)
-(require 'greader)
 
 (require 'grc-lib)
 (require 'grc-req)
@@ -10,8 +8,6 @@
 (require 'grc-list)
 (require 'grc-show)
 
-;; The default of 4 hours seems to be too long
-(setq g-auth-lifetime "1 hour")
 
 (defgroup grc nil "Google Reader Client for Emacs")
 (defcustom grc-enable-hl-line t
@@ -22,11 +18,6 @@
 (defcustom grc-fetch-count 100
   "The count of items to fetch.  The larger the count the slower the request."
   :type 'integer
-  :group 'grc)
-
-(defcustom grc-shell-file-name "/bin/bash"
-  "Greader, as is, has issues with zsh.  This is my workaround."
-  :type 'string
   :group 'grc)
 
 (defvar grc-google-categories
@@ -51,6 +42,12 @@
 
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
+
+(defun grc-set-current-entry (entry)
+  (setq grc-current-entry entry))
+
+(defun grc-set-entry-cache (entries)
+  (setq grc-entry-cache entries))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -132,19 +129,11 @@
 ;; Main entry function
 (defun grc (&optional state)
   (interactive "P")
-  (grc-req-ensure-authenticated)
-  (let ((buffer (get-buffer-create grc-list-buffer))
-        (state (if (and state (interactive-p))
-                   (grc-read-state "State: ")
-                 grc-current-state)))
-    (setq grc-current-state state)
-    (with-current-buffer buffer
-      (grc-list-mode)
-      (grc-list-display (grc-req-remote-entries grc-current-state))
-      (grc-list-header-line)
-      (goto-char (point-min))
-      (switch-to-buffer buffer))))
-(defalias 'grc 'grc-reading-list)
+  (setq grc-current-state (if (and state (interactive-p))
+                              (grc-read-state "State: ")
+                            grc-current-state))
+  (grc-list-display (grc-req-remote-entries grc-current-state))
+  (switch-to-buffer grc-list-buffer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
@@ -181,7 +170,7 @@
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-req-send-edit-request (grc-req-google-tag-request entry ,tag
+                 (grc-req-send-edit-request (grc-req-tag-request entry ,tag
                                                                         remove))
                  (if (null remove)
                      (grc-add-category entry ,tag)
