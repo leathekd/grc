@@ -1,6 +1,3 @@
-(require 'grc)
-(require 'grc-list)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Show functions
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")

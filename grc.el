@@ -2,6 +2,7 @@
 (require 'html2text)
 
 (require 'grc-lib)
+(require 'grc-auth)
 (require 'grc-req)
 (require 'grc-parse)
 (require 'grc-highlight)
@@ -170,8 +171,8 @@
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-req-send-edit-request (grc-req-tag-request entry ,tag
-                                                                        remove))
+                 (grc-req-send-edit-request (grc-req-tag-request entry
+                                                                 ,tag remove))
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))

@@ -1,6 +1,3 @@
-(require 'grc)
-(require 'grc-req)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; List view functions
 (defvar grc-sort-columns '(date source))

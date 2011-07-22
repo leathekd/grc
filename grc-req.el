@@ -1,8 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Google reader requests
-(require 'grc)
-(require 'grc-auth)
-
 (defvar grc-auth-header-format
   "--header 'Authorization: OAuth %s'"
   "HTTP authorization headers to send.")
@@ -27,7 +24,7 @@
   :type 'string)
 
 (defcustom grc-curl-options
-  "--compressed --silent"
+  "--compressed --silent --location --location-trusted"
   "Options to pass to all grc curl requests"
   :group 'grc
   :type 'string)
@@ -38,28 +35,27 @@
 
 (defun grc-req-get-request (endpoint &optional request no-auth raw-get)
   (unless no-auth (grc-auth-ensure-authenticated))
-  (with-current-buffer (get-buffer-create "*grc-request*")
-    (let ((command (format
-                    "%s %s %s -X GET '%s' "
-                    grc-curl-program grc-curl-options
-                    (if no-auth "" (grc-req-auth-header))
-                    (if request
-                        (concat endpoint "?" request)
-                      endpoint))))
-      (shell-command command (current-buffer))
-      (goto-char (point-min))
-      (bury-buffer)
-      (cond
-       (raw-get (buffer-substring-no-properties (point-min) (point-max)))
-       ((looking-at "{") (let ((json-array-type 'list))
-                           (json-read)))
-       ((looking-at "OK") "OK")
-       (t (error "Error fetching: %s?%s\nFull command: %s"
-                 endpoint request command))))))
+  (with-temp-buffer
+   (let ((command (format
+                   "%s %s %s -X GET '%s' "
+                   grc-curl-program grc-curl-options
+                   (if no-auth "" (grc-req-auth-header))
+                   (if request
+                       (concat endpoint "?" request)
+                     endpoint))))
+     (shell-command command (current-buffer))
+     (goto-char (point-min))
+     (cond
+      (raw-get (buffer-substring-no-properties (point-min) (point-max)))
+      ((looking-at "{") (let ((json-array-type 'list))
+                          (json-read)))
+      ((looking-at "OK") "OK")
+      (t (error "Error fetching: %s?%s\nFull command: %s"
+                endpoint request command))))))
 
 (defun grc-req-post-request (endpoint request &optional no-auth)
   (unless no-auth (grc-auth-ensure-authenticated))
-  (with-current-buffer (get-buffer-create "*grc-request*")
+  (with-temp-buffer
     (let ((command (format
                     "%s %s %s  -X POST -d '%s' '%s' "
                     grc-curl-program grc-curl-options
@@ -68,7 +64,6 @@
                     endpoint)))
       (shell-command command (current-buffer))
       (goto-char (point-min))
-      (bury-buffer)
       (cond
        ((looking-at "{") (let ((json-array-type 'list))
                            (json-read)))

@@ -1,8 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Auth functions - generally oauth2
-(require 'grc)
-(require 'grc-req)
-
 (defcustom grc-auth-client-id ""
   "The client id provided by Google"
   :group 'grc
