@@ -1,3 +1,6 @@
+(require 'grc)
+(require 'grc-list)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Show functions
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
@@ -22,8 +25,8 @@
                          (aget entry 'summary t)
                          "No summary provided."))
             (title (or (aget entry 'title))))
-
         (erase-buffer)
+        (insert "<html><head><title></title></head><body>")
         (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
                                          (car lst) (cadr lst))))
                 `(("Title"  ,(aget entry 'title))
@@ -51,8 +54,10 @@
           (mapcar 'grc-show-print-comment
                   (grc-sort-by 'createdTime (aget entry 'comments))))
 
+        (insert "</body></html>")
         (if (featurep 'w3m)
-            (w3m-buffer)
+            (let ((w3m-display-inline-images t))
+              (w3m-buffer))
           (html2text))
         (grc-highlight-keywords (grc-keywords grc-entry-cache))))
     (setq grc-current-entry (grc-mark-read entry))
@@ -111,20 +116,34 @@
     (let ((scroll-error-top-bottom t))
       (scroll-up-command 25))))
 
+(defun grc-show-external-view-url ()
+  (interactive)
+  (when (featurep 'w3m)
+    (w3m-external-view-this-url)))
+
+(defun grc-show-next-anchor ()
+  (interactive)
+  (when (featurep 'w3m)
+    (w3m-next-anchor)))
+
+(defun grc-show-previous-anchor ()
+  (interactive)
+  (when (featurep 'w3m)
+    (w3m-previous-anchor)))
+
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map " " 'grc-show-advance-or-show-next-entry)
-    (define-key map "?" 'grc-show-help)
-    (define-key map "q" 'grc-show-kill-this-buffer)
-    (define-key map "k" 'grc-show-mark-kept-unread)
-    (define-key map "s" 'grc-show-mark-starred)
-    (define-key map "n" 'grc-show-next-entry)
-    (define-key map "p" 'grc-show-previous-entry)
-    (define-key map "v" 'grc-show-view-external)
-    (when (featurep 'w3m)
-      (define-key map (kbd "RET")   'w3m-external-view-this-url)
-      (define-key map (kbd "TAB")   'w3m-next-anchor)
-      (define-key map (kbd "S-TAB") 'w3m-previous-anchor))
+    (define-key map " "           'grc-show-advance-or-show-next-entry)
+    (define-key map "?"           'grc-show-help)
+    (define-key map "q"           'grc-show-kill-this-buffer)
+    (define-key map "k"           'grc-show-mark-kept-unread)
+    (define-key map "s"           'grc-show-mark-starred)
+    (define-key map "n"           'grc-show-next-entry)
+    (define-key map "p"           'grc-show-previous-entry)
+    (define-key map "v"           'grc-show-view-external)
+    (define-key map (kbd "RET")   'grc-show-external-view-url)
+    (define-key map (kbd "TAB")   'grc-show-next-anchor)
+    (define-key map (kbd "S-TAB") 'grc-show-previous-anchor)
     map)
   "Keymap for \"grc show\" buffers.")
 (fset 'grc-show-mode-map grc-show-mode-map)
@@ -138,8 +157,6 @@
   (use-local-map grc-show-mode-map)
   (setq major-mode 'grc-show-mode
         mode-name "grc-show")
-  (setq buffer-read-only t)
-  (when (featurep 'w3m)
-    (setq w3m-display-inline-images t)))
+  (setq buffer-read-only t))
 
 (provide 'grc-show)

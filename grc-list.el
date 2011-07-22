@@ -70,17 +70,16 @@
 
 (defun grc-list-header-line ()
   (setq header-line-format
-        (format "Google Reader Client for %s  Viewing: %s  Sort: %s %s"
-                greader-user-email (car (rassoc grc-current-state
-                                                grc-state-alist))
+        (format "Google Reader Client -- Viewing: %s  Sort: %s %s"
+                (cdr (assoc grc-current-state
+                            grc-google-categories))
                 (capitalize (symbol-name (or grc-current-sort
                                              grc-default-sort-column)))
                 (if grc-current-sort-reversed
                     "Descending" "Ascending"))))
 
 (defun grc-list-refresh ()
-  (with-current-buffer grc-list-buffer
-    (grc-list-header-line)
+  (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((line (1- (line-number-at-pos))))
       (grc-list-display grc-entry-cache)
       (goto-char (point-min))
