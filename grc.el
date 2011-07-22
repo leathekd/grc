@@ -130,7 +130,7 @@
                  grc-google-categories))))
 
 ;; Main entry function
-(defun grc-reading-list (&optional state)
+(defun grc (&optional state)
   (interactive "P")
   (grc-req-ensure-authenticated)
   (let ((buffer (get-buffer-create grc-list-buffer))
