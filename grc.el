@@ -1,39 +1,3 @@
-;; general
-;; TODO: need to access https://www.google.com/reader/api/0/friend/list to
-;; get to the encodedSharersList to send in...
-;; This might necessitate leaving greader behind...
-;; TODO: Oauth
-
-;; TODO: Docstrings && help commands
-;; TODO: refactor downloading and showing - ie, initial dl should call
-;;       grc-refresh-view
-;; TODO: split this file into smaller files
-
-;; both list and show
-;; TODO: All, not just unread
-;; TODO: share
-;; TODO: adding note - edit w/ snippet=note
-;; TODO: emailing
-;; TODO: feed icons?
-;; TODO: comment icon, user pictures with comments?
-
-;; List view
-;; TODO: pagination?
-;; TODO: add counts to header line
-;; TODO: add years when looking at older posts
-;; TODO: operations on regions (read, etc)
-;; TODO: flexible columns? - calc max col sizes upfront
-;; TODO: investigate other ways of refreshing view (delete lines, etc)
-;;       for refreshing a line - modify entry, delete line, redraw
-;; TODO: secondary sort
-;; TODO: search
-
-;; Show view
-;; TODO: fill-buffer to prevent long lines (does w3m have something
-;;       for this? or is generic "fill")
-;; TODO: user comments
-;; TODO: add comment
-
 (require 'cl)
 (require 'html2text)
 (require 'g-auth)
