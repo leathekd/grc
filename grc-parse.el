@@ -26,7 +26,7 @@
 
 (defun grc-parse-parse-response (root)
   (setq grc-raw-response root)
-  (let ((entries (aget root 'items)))
+  (let ((entries (aget root 'items t)))
     (mapcar 'grc-parse-process-entry entries)))
 
 (provide 'grc-parse)
