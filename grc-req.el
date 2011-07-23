@@ -34,9 +34,9 @@
           (aget grc-auth-access-token 'token)))
 
 (defun grc-req-get-request (endpoint &optional request no-auth raw-get)
-  (unless no-auth (grc-auth-ensure-authenticated))
   (with-temp-buffer
-   (let ((command (format
+    (unless no-auth (grc-auth-ensure-authenticated))
+    (let ((command (format
                    "%s %s %s -X GET '%s' "
                    grc-curl-program grc-curl-options
                    (if no-auth "" (grc-req-auth-header))
@@ -54,8 +54,8 @@
                 endpoint request command))))))
 
 (defun grc-req-post-request (endpoint request &optional no-auth)
-  (unless no-auth (grc-auth-ensure-authenticated))
   (with-temp-buffer
+    (unless no-auth (grc-auth-ensure-authenticated))
     (let ((command (format
                     "%s %s %s  -X POST -d '%s' '%s' "
                     grc-curl-program grc-curl-options
@@ -110,7 +110,6 @@
             (aget (grc-req-friends) 'encodedSharersList))))
 
 (defun grc-req-tag-request (entry tag remove)
-  (grc-auth-ensure-authenticated)
   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
           (if remove "r" "a")
           tag
@@ -119,7 +118,6 @@
           (grc-auth-get-action-token)))
 
 (defun grc-req-mark-all-read (src)
-  (grc-auth-ensure-authenticated)
   (grc-req-post-request
    "http://www.google.com/reader/api/0/mark-all-as-read"
    (format "s=%s&ts=%s&T=%s"
