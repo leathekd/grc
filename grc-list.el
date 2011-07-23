@@ -131,18 +131,18 @@
   (let* ((feed-name (when (and feed (interactive-p))
                       (ido-completing-read "Feed: "
                                            (mapcar (lambda (e) (aget e
-                                                                'source t))
+                                                                     'source t))
                                                    grc-entry-cache)
                                            nil t)))
          (items (remove-if-not (lambda (e) (string= feed-name
-                                               (aget e 'source t)))
+                                                    (aget e 'source t)))
                                grc-entry-cache))
          (src (aget (first items) 'feed t)))
     (grc-req-mark-all-read src)
     (mapcar (lambda (e) (grc-add-category e "read"))
             (or items grc-entry-cache)))
-      (grc-list-display grc-entry-cache)
-      (goto-char (point-min))
+  (grc-list-display grc-entry-cache)
+  (goto-char (point-min))
   (grc-list-refresh))
 
 (defun grc-list-show-entry ()
@@ -197,19 +197,19 @@ for displaying unread feeds from Google Reader.
 
 All currently available key bindings:
 
-g	Display or refresh the grc reading list.
-v	Open the current rss entry in the default emacs browser
-o	Cycle through sort states.
-RET	View the current entry.
-SPC	View the current entry.
-p	Move the point to the previous entry.
-n	Move the point to the next entry.
-s	Star the current entry.  Use the prefix operator to un-star.
-x	Mark the current entry as Read and remove it immediately from the list.
-r	Mark the current entry as Read.  Use the prefix operator to unmark.
-k	Mark the current entry as Kept Unread.  Use the prefix operator to unmark.
-?	Show the help message for the grc list screen
-q	Kill the current buffer."
+g       Display or refresh the grc reading list.
+v       Open the current rss entry in the default emacs browser
+o       Cycle through sort states.
+RET     View the current entry.
+SPC     View the current entry.
+p       Move the point to the previous entry.
+n       Move the point to the next entry.
+s       Star the current entry.  Use the prefix operator to un-star.
+x       Mark the current entry as Read and remove it immediately from the list.
+r       Mark the current entry as Read.  Use the prefix operator to unmark.
+k       Mark the current entry as Kept Unread.  Use the prefix operator to unmark.
+?       Show the help message for the grc list screen
+q       Kill the current buffer."
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-list-mode-map)
