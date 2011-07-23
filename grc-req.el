@@ -34,41 +34,38 @@
           (aget grc-auth-access-token 'token)))
 
 (defun grc-req-get-request (endpoint &optional request no-auth raw-get)
-  (with-temp-buffer
-    (unless no-auth (grc-auth-ensure-authenticated))
-    (let ((command (format
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (let* ((command (format
                    "%s %s %s -X GET '%s' "
                    grc-curl-program grc-curl-options
                    (if no-auth "" (grc-req-auth-header))
                    (if request
                        (concat endpoint "?" request)
-                     endpoint))))
-     (shell-command command (current-buffer))
-     (goto-char (point-min))
-     (cond
-      (raw-get (buffer-substring-no-properties (point-min) (point-max)))
-      ((looking-at "{") (let ((json-array-type 'list))
-                          (json-read)))
-      ((looking-at "OK") "OK")
-      (t (error "Error fetching: %s?%s\nFull command: %s"
-                endpoint request command))))))
+                     endpoint)))
+         (resp (shell-command-to-string command)))
+    (cond
+     (raw-get (buffer-substring-no-properties (point-min) (point-max)))
+     ((string-match "^{" resp) (let ((json-array-type 'list))
+                                 (json-read-from-string resp)))
+     ((string-match "^OK" resp) "OK")
+     (t (error "Error fetching: %s?%s\nFull command: %s\nResponse: %s"
+               endpoint request command resp)))))
 
 (defun grc-req-post-request (endpoint request &optional no-auth)
-  (with-temp-buffer
-    (unless no-auth (grc-auth-ensure-authenticated))
-    (let ((command (format
-                    "%s %s %s  -X POST -d '%s' '%s' "
-                    grc-curl-program grc-curl-options
-                    (if no-auth "" (grc-req-auth-header))
-                    request
-                    endpoint)))
-      (shell-command command (current-buffer))
-      (goto-char (point-min))
-      (cond
-       ((looking-at "{") (let ((json-array-type 'list))
-                           (json-read)))
-       ((looking-at "OK") "OK")
-       (t (error "Error requesting: %s\nFull command: %s " request command))))))
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (let* ((command (format
+                   "%s %s %s  -X POST -d '%s' '%s' "
+                   grc-curl-program grc-curl-options
+                   (if no-auth "" (grc-req-auth-header))
+                   request
+                   endpoint))
+         (resp (shell-command-to-string command)))
+    (cond
+     ((string-match "^{" resp) (let ((json-array-type 'list))
+                                 (json-read-from-string resp)))
+     ((string-match "^OK" resp) "OK")
+     (t (error "Error fetching: %s?%s\nFull command: %s\nResponse: %s"
+               endpoint request command resp)))))
 
 (defun grc-req-send-edit-request (request)
   (grc-req-post-request
