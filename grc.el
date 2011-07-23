@@ -127,9 +127,9 @@
                         nil 'require-match nil grc-read-history)
                  grc-google-categories))))
 
-;; Main entry function
+;;;###autoload
 (defun grc (&optional state)
-  "Display or refresh the grc reading list."
+  "Display or refresh the grc reading list.  Main entry function."
   (interactive "P")
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")

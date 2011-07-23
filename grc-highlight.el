@@ -30,7 +30,6 @@ between 0 and 255."
     (format "#%04x%04x%04x"
             (- 65535 r) (- 65535 g) (- 65535 b))))
 
-;;;###autoload
 (defun grc-highlight-keywords (keywords)
   "Searches for nicknames and highlights them. Uses the first
 twelve digits of the MD5 message digest of the nickname as
