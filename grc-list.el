@@ -46,7 +46,9 @@
       (grc-list-mode)
       (grc-list-header-line)
       (erase-buffer)
-      (setq grc-entry-cache (grc-sort-by 'date entries t 'title))
+      (setq grc-entry-cache
+            (grc-sort-by (or grc-current-sort grc-default-sort-column)
+                         entries grc-current-sort-reversed 'title))
       (mapcar 'grc-list-print-entry grc-entry-cache)
       (grc-highlight-keywords (grc-keywords entries))
       (goto-char (point-min)))))
