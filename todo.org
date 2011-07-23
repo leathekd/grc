@@ -1,5 +1,4 @@
 * general
-  - TODO: Docstrings && help commands
   - TODO: tests    
 
 * both list and show
@@ -7,7 +6,7 @@
   - TODO: All, not just unread
   - TODO: share
   - TODO: adding note - edit w/ snippet=note
-  - TODO: emailing
+  - TODO: emailing (doesn't seem like I can use the same method google uses)
   - TODO: feed icons?
   - TODO: comment icon, user pictures with comments?
 
@@ -19,7 +18,6 @@
   - TODO: flexible columns? - calc max col sizes upfront
   - TODO: investigate other ways of refreshing view (delete lines, etc)
     for refreshing a line - modify entry, delete line, redraw
-  - TODO: secondary sort
   - TODO: search
 
 * Show view

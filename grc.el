@@ -129,6 +129,7 @@
 
 ;; Main entry function
 (defun grc (&optional state)
+  "Display or refresh the grc reading list."
   (interactive "P")
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
@@ -142,6 +143,18 @@
   "Kill the current buffer."
   (interactive)
   (kill-buffer (current-buffer)))
+
+(defun grc-help ()
+  "Show the help message for the grc view"
+  (interactive)
+  (let ((mode major-mode))
+    (with-current-buffer (get-buffer-create (format "*%s help*" mode))
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (documentation mode t))
+        (goto-char (point-min))
+        (set-buffer-modified-p nil)
+        (view-buffer (current-buffer) 'kill-buffer-if-not-modified)))))
 
 (defun grc-entry-index (entry)
   (- (length grc-entry-cache)
@@ -184,9 +197,6 @@
 
 (defun grc-mark-kept-unread (entry)
   (funcall (grc-mark-fn "kept-unread") entry nil))
-
-(defun grc-mark-read-and-remove (entry)
-  (delete (grc-mark-read entry) grc-entry-cache))
 
 (defun grc-mark-starred (entry &optional remove)
   (funcall (grc-mark-fn "starred") entry remove))

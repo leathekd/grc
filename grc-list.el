@@ -58,11 +58,13 @@
   (nth (- (line-number-at-pos) 1) grc-entry-cache))
 
 (defun grc-list-next-entry ()
+  "Move the point to the next entry."
   (interactive)
   (next-line)
   (move-beginning-of-line nil))
 
 (defun grc-list-previous-entry ()
+  "Move the point to the previous entry."
   (interactive)
   (previous-line)
   (move-beginning-of-line nil))
@@ -85,9 +87,9 @@
       (forward-line line))))
 
 (defun grc-list-help ()
-  ;;TODO
+  "Show the help message for the grc list view"
   (interactive)
-  )
+  (grc-help))
 
 (defun grc-list-view-external ()
   "Open the current rss entry in the default emacs browser"
@@ -101,24 +103,30 @@
      (grc-list-next-entry)
      (grc-list-refresh)))
 
-(defun grc-list-mark-read ()
-  (interactive)
-  (funcall (grc-list-mark-fn "read")))
+(defun grc-list-mark-read (remove)
+  "Mark the current entry as Read.  Use the prefix operator to unmark."
+  (interactive "P")
+  (funcall (grc-list-mark-fn "read") remove))
 
 (defun grc-list-mark-read-and-remove ()
+  "Mark the current entry as Read and remove it immediately from the list."
   (interactive)
-  (grc-mark-read-and-remove (grc-list-get-current-entry))
+  (funcall (grc-mark-fn "read") (grc-list-get-current-entry))
+  (delete (grc-list-get-current-entry) grc-entry-cache)
   (grc-list-refresh))
 
 (defun grc-list-mark-kept-unread (remove)
+  "Mark the current entry as Kept Unread.  Use the prefix operator to unmark."
   (interactive "P")
   (funcall (grc-list-mark-fn "kept-unread") remove))
 
 (defun grc-list-mark-starred (remove)
+  "Star the current entry.  Use the prefix operator to un-star."
   (interactive "P")
   (funcall (grc-list-mark-fn "starred") remove))
 
 (defun grc-list-mark-all-read (feed)
+  "Mark all as Read."
   (interactive "P")
   (let* ((feed-name (when (and feed (interactive-p))
                       (ido-completing-read "Feed: "
@@ -133,16 +141,24 @@
     (grc-req-mark-all-read src)
     (mapcar (lambda (e) (grc-add-category e "read"))
             (or items grc-entry-cache)))
+      (grc-list-display grc-entry-cache)
+      (goto-char (point-min))
   (grc-list-refresh))
 
 (defun grc-list-show-entry ()
+  "View the current entry."
   (interactive)
   (grc-show-entry (grc-list-get-current-entry)))
 
 (defun grc-list-sort ()
-  "Interactive function to cycle through sort states:
+  "Cycle through sort states.
 
-  Date Asc, Date Desc, Source Asc, Source Desc"
+The defined states are:
+
+Date Asc
+Date Desc
+Source Asc
+Source Desc"
   (interactive)
   (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
                        grc-default-sort-column)))
@@ -161,7 +177,7 @@
     (define-key map "k"         'grc-list-mark-kept-unread)
     (define-key map "r"         'grc-list-mark-read)
     (define-key map "x"         'grc-list-mark-read-and-remove)
-    (define-key map "s"         'grc-list-mark-starred)
+    (define-key map "*"         'grc-list-mark-starred)
     (define-key map "n"         'grc-list-next-entry)
     (define-key map "p"         'grc-list-previous-entry)
     (define-key map " "         'grc-list-show-entry)
@@ -176,12 +192,24 @@
 (defun grc-list-mode ()
   "Major mode for viewing feeds with grc
 
-  This buffer contains the results of the \"grc-reading-list\" command
-  for displaying unread feeds from Google Reader.
+This buffer contains the results of the \"grc\" command
+for displaying unread feeds from Google Reader.
 
-  All currently available key bindings:
+All currently available key bindings:
 
-  \\{grc-list-mode-map}"
+g	Display or refresh the grc reading list.
+v	Open the current rss entry in the default emacs browser
+o	Cycle through sort states.
+RET	View the current entry.
+SPC	View the current entry.
+p	Move the point to the previous entry.
+n	Move the point to the next entry.
+s	Star the current entry.  Use the prefix operator to un-star.
+x	Mark the current entry as Read and remove it immediately from the list.
+r	Mark the current entry as Read.  Use the prefix operator to unmark.
+k	Mark the current entry as Kept Unread.  Use the prefix operator to unmark.
+?	Show the help message for the grc list screen
+q	Kill the current buffer."
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-list-mode-map)

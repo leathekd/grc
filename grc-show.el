@@ -62,25 +62,29 @@
     (grc-list-refresh)))
 
 (defun grc-show-help ()
-  ;;TODO
+  "Show the help message for the grc show view"
   (interactive)
-  )
+  (grc-help))
 
 (defun grc-show-mark-kept-unread (remove)
+  "Mark the current entry as Keep Unread."
   (interactive "P")
   (funcall (grc-mark-fn "kept-unread") grc-current-entry remove))
 
 (defun grc-show-mark-starred (remove)
+  "Star the current entry."
   (interactive "P")
   (funcall (grc-mark-fn "starred") grc-current-entry remove))
 
 (defun grc-show-kill-this-buffer ()
+  "Close the show buffer and return to the list buffer."
   (interactive)
   (when (get-buffer grc-list-buffer)
     (switch-to-buffer (get-buffer grc-list-buffer))
     (kill-buffer grc-show-buffer)))
 
 (defun grc-show-next-entry ()
+  "View the next entry."
   (interactive)
   (let ((entry (cadr (member grc-current-entry grc-entry-cache))))
     (if entry
@@ -92,6 +96,7 @@
       (error "No more entries"))))
 
 (defun grc-show-previous-entry ()
+  "View the previous entry."
   (interactive)
   (let ((entry (cadr (member grc-current-entry (reverse grc-entry-cache)))))
     (if entry
@@ -103,10 +108,12 @@
       (error "No previous entries"))))
 
 (defun grc-show-view-external ()
+  "Load the current entry in an external browser."
   (interactive)
   (grc-view-external grc-current-entry))
 
 (defun grc-show-advance-or-show-next-entry ()
+  "Will move down 25 lines or load the next entry once at the bottom."
   (interactive)
   (if (eobp)
       (grc-show-next-entry)
@@ -114,16 +121,19 @@
       (scroll-up-command 25))))
 
 (defun grc-show-external-view-url ()
+  "Load the URL/anchor under point in an external browser."
   (interactive)
   (when (featurep 'w3m)
     (w3m-external-view-this-url)))
 
 (defun grc-show-next-anchor ()
+  "Move the point to the next anchor."
   (interactive)
   (when (featurep 'w3m)
     (w3m-next-anchor)))
 
 (defun grc-show-previous-anchor ()
+  "Move the point to the previous anchor."
   (interactive)
   (when (featurep 'w3m)
     (w3m-previous-anchor)))
@@ -134,7 +144,7 @@
     (define-key map "?"           'grc-show-help)
     (define-key map "q"           'grc-show-kill-this-buffer)
     (define-key map "k"           'grc-show-mark-kept-unread)
-    (define-key map "s"           'grc-show-mark-starred)
+    (define-key map "*"           'grc-show-mark-starred)
     (define-key map "n"           'grc-show-next-entry)
     (define-key map "p"           'grc-show-previous-entry)
     (define-key map "v"           'grc-show-view-external)
@@ -148,7 +158,19 @@
 (defun grc-show-mode ()
   "Major mode for viewing a feed entry in grc
 
-\\{grc-show-mode-map}"
+All currently available key bindings:
+
+S-TAB	Move the point to the previous anchor.
+TAB	Move the point to the next anchor.
+RET	Load the URL/anchor under point in an external browser.
+v	Load the current entry in an external browser.
+p	View the previous entry.
+n	View the next entry.
+s	Star the current entry.
+k	Mark the current entry as Keep Unread.
+q	Close the show buffer and return to the list buffer.
+?	Show the help message for the grc show view
+SPC	Will move down 25 lines or load the next entry once at the bottom."
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-show-mode-map)
