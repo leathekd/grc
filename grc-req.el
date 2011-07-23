@@ -44,7 +44,7 @@
                      endpoint)))
          (resp (shell-command-to-string command)))
     (cond
-     (raw-get (buffer-substring-no-properties (point-min) (point-max)))
+     (raw-get resp)
      ((string-match "^{" resp) (let ((json-array-type 'list))
                                  (json-read-from-string resp)))
      ((string-match "^OK" resp) "OK")
