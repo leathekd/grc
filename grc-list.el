@@ -112,7 +112,7 @@
   "Mark the current entry as Read and remove it immediately from the list."
   (interactive)
   (funcall (grc-mark-fn "read") (grc-list-get-current-entry))
-  (delete (grc-list-get-current-entry) grc-entry-cache)
+  (setq grc-entry-cache (delete (grc-list-get-current-entry) grc-entry-cache))
   (grc-list-refresh))
 
 (defun grc-list-mark-kept-unread (remove)
