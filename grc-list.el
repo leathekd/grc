@@ -4,10 +4,10 @@
 (defvar grc-current-sort nil)
 (defvar grc-current-sort-reversed nil)
 (defcustom grc-default-sort-column 'date
-  "Default column by which to sort the list view"
+  "Default column with which to sort the list view"
   :group 'grc
-  :type '(choice (const :tag "Date" 'date)
-                 (const :tag "Source" 'source)))
+  :type '(choice (symbol :tag "Date" 'date)
+                 (symbol :tag "Source" 'source)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 
