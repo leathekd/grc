@@ -1,5 +1,35 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Show functions
+;;; grc-show.el --- Google Reader Mode for Emacs
+;;
+;; Copyright (c) 2011 David Leatherman
+;;
+;; Author: David Leatherman <leathekd@gmail.com>
+;; URL: http://www.github.com/leathekd/grc
+;; Version: 0.1.0
+
+;; This file is not part of GNU Emacs.
+
+;;; Commentary:
+
+;; This file contains the code for showing an individual Reader entry
+
+;;; License:
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 3
+;; of the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+;; Boston, MA 02110-1301, USA.
+
+;;; Code:
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 (defun grc-show-print-comment (comment)
@@ -158,19 +188,19 @@
 (defun grc-show-mode ()
   "Major mode for viewing a feed entry in grc
 
-All currently available key bindings:
+  All currently available key bindings:
 
-S-TAB	Move the point to the previous anchor.
-TAB	Move the point to the next anchor.
-RET	Load the URL/anchor under point in an external browser.
-v	Load the current entry in an external browser.
-p	View the previous entry.
-n	View the next entry.
-s	Star the current entry.
-k	Mark the current entry as Keep Unread.
-q	Close the show buffer and return to the list buffer.
-?	Show the help message for the grc show view
-SPC	Will move down 25 lines or load the next entry once at the bottom."
+  S-TAB  Move the point to the previous anchor.
+  TAB    Move the point to the next anchor.
+  RET    Load the URL/anchor under point in an external browser.
+  v      Load the current entry in an external browser.
+  p      View the previous entry.
+  n      View the next entry.
+  s      Star the current entry.
+  k      Mark the current entry as Keep Unread.
+  q      Close the show buffer and return to the list buffer.
+  ?      Show the help message for the grc show view
+  SPC    Will move down 25 lines or load the next entry once at the bottom."
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-show-mode-map)
@@ -179,3 +209,4 @@ SPC	Will move down 25 lines or load the next entry once at the bottom."
   (setq buffer-read-only t))
 
 (provide 'grc-show)
+;;; grc-show.el ends here

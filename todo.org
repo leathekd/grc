@@ -1,7 +1,7 @@
-* general
-  - TODO: tests    
+* General
+  - TODO: tests. 
 
-* both list and show
+* Both list and show
   - TODO: Comment view (to keep up with ongoing discussion)
   - TODO: All, not just unread
   - TODO: share

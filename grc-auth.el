@@ -1,5 +1,37 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Auth functions - generally oauth2
+;;; grc-auth.el --- Google Reader Mode for Emacs
+;;
+;; Copyright (c) 2011 David Leatherman
+;;
+;; Author: David Leatherman <leathekd@gmail.com>
+;; URL: http://www.github.com/leathekd/grc
+;; Version: 0.1.0
+
+;; This file is not part of GNU Emacs.
+
+;;; Commentary:
+
+;; This file contains code to authenticate against Google's Oauth2
+;; implementation.  In addition it will cache the refresh token on
+;; disk and keep the access and action tokens up-to-date.
+
+;;; License:
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 3
+;; of the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+;; Boston, MA 02110-1301, USA.
+
+;;; Code:
 (defcustom grc-auth-client-id ""
   "The client id provided by Google"
   :group 'grc
@@ -57,7 +89,8 @@
           (expires . ,(seconds-to-time (+ (aget resp 'expires_in)
                                           (float-time)))))))
 
-(defun grc-auth-get-access-token () (aget grc-auth-access-token 'token))
+(defun grc-auth-get-access-token ()
+  (aget grc-auth-access-token 'token))
 
 (defun grc-auth-set-refresh-token (resp)
   (setq grc-auth-refresh-token (aget resp 'refresh_token))
@@ -122,3 +155,4 @@
     grc-auth-access-token))
 
 (provide 'grc-auth)
+;;; grc-auth.el ends here

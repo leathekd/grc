@@ -1,5 +1,35 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; List view functions
+;;; grc-list.el --- Google Reader Mode for Emacs
+;;
+;; Copyright (c) 2011 David Leatherman
+;;
+;; Author: David Leatherman <leathekd@gmail.com>
+;; URL: http://www.github.com/leathekd/grc
+;; Version: 0.1.0
+
+;; This file is not part of GNU Emacs.
+
+;;; Commentary:
+
+;; This file contains the code for showing the list of Reader entries
+
+;;; License:
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 3
+;; of the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+;; Boston, MA 02110-1301, USA.
+
+;;; Code:
 (defvar grc-sort-columns '(date source))
 (defvar grc-current-sort nil)
 (defvar grc-current-sort-reversed nil)
@@ -153,12 +183,12 @@
 (defun grc-list-sort ()
   "Cycle through sort states.
 
-The defined states are:
+  The defined states are:
 
-Date Asc
-Date Desc
-Source Asc
-Source Desc"
+  Date Asc
+  Date Desc
+  Source Asc
+  Source Desc"
   (interactive)
   (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
                        grc-default-sort-column)))
@@ -192,24 +222,24 @@ Source Desc"
 (defun grc-list-mode ()
   "Major mode for viewing feeds with grc
 
-This buffer contains the results of the \"grc\" command
-for displaying unread feeds from Google Reader.
+  This buffer contains the results of the \"grc\" command
+  for displaying unread feeds from Google Reader.
 
-All currently available key bindings:
+  All currently available key bindings:
 
-g       Display or refresh the grc reading list.
-v       Open the current rss entry in the default emacs browser
-o       Cycle through sort states.
-RET     View the current entry.
-SPC     View the current entry.
-p       Move the point to the previous entry.
-n       Move the point to the next entry.
-s       Star the current entry.  Use the prefix operator to un-star.
-x       Mark the current entry as Read and remove it immediately from the list.
-r       Mark the current entry as Read.  Use the prefix operator to unmark.
-k       Mark the current entry as Kept Unread.  Use the prefix operator to unmark.
-?       Show the help message for the grc list screen
-q       Kill the current buffer."
+  g    Display or refresh the grc reading list.
+  v    Open the current rss entry in the default emacs browser
+  o    Cycle through sort states.
+  RET  View the current entry.
+  SPC  View the current entry.
+  p    Move the point to the previous entry.
+  n    Move the point to the next entry.
+  s    Star the current entry.  Use the prefix operator to un-star.
+  x    Mark the current entry as Read and remove it immediately from the list.
+  r    Mark the current entry as Read.  Use the prefix operator to unmark.
+  k    Mark the current entry as Kept Unread.  Use the prefix operator to unmark
+  ?    Show the help message for the grc list screen
+  q    Kill the current buffer."
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-list-mode-map)
@@ -219,3 +249,4 @@ q       Kill the current buffer."
   (hl-line-mode grc-enable-hl-line))
 
 (provide 'grc-list)
+;;; grc-list.el ends here
