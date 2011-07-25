@@ -1,9 +1,8 @@
 * General
-  - TODO: tests. 
+  - TODO: tests.
 
 * Both list and show
   - TODO: Comment view (to keep up with ongoing discussion)
-  - TODO: All, not just unread
   - TODO: share
   - TODO: adding note - edit w/ snippet=note
   - TODO: emailing (doesn't seem like I can use the same method google uses)
@@ -11,7 +10,7 @@
   - TODO: comment icon, user pictures with comments?
 
 * List view
-  - TODO: pagination?
+  - TODO: pagination
   - TODO: add counts to header line
   - TODO: add years when looking at older posts
   - TODO: operations on regions (read, etc)
@@ -28,7 +27,3 @@
 * Request
   - TODO: Should grc-req contain low level stuff (get, post) or
     higher level stuff (mark-all-read), or both?  It's inbetween now...
-
-
-
-
