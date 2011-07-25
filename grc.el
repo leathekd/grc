@@ -80,6 +80,68 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
+(defun grc-replace-string (from-string to-string)
+  (while (search-forward from-string nil t)
+    (replace-match to-string nil t)))
+
+(defun grc-replace-regexp (regexp to-string)
+  (while (search-forward-regexp regexp nil t)
+    (replace-match to-string nil t)))
+
+(defun grc-strip-html ()
+  (save-excursion
+    (mapcar '(lambda (pair)
+               (goto-char 1)
+               (grc-replace-string (car pair) (cadr pair)))
+            grc-html-entity-list)
+    (goto-char 1)
+    (grc-replace-regexp "<.*?>" "")
+    (goto-char 1)
+    (while (not (eobp))
+      (beginning-of-line)
+      (delete-horizontal-space)
+      (forward-line 1))
+    (goto-char 1)
+    (grc-replace-regexp "^\n+" "\n")))
+
+(defun grc-annotate-anchors (&optional use-annotations links)
+  (if (search-forward-regexp "<a" nil t)
+      (let* ((p1 (point))
+             (p2 (search-forward-regexp ">" nil t))
+             (p3 (search-forward-regexp "</a>" nil t))
+             (attrs (html2text-get-attr p1 p2))
+             (href (html2text-attr-value attrs "href"))
+             (text (buffer-substring-no-properties p2 (- p3 4)))
+             (text (with-temp-buffer
+                     (insert text)
+                     (grc-strip-html)
+                     (buffer-substring (point-min) (point-max)))))
+        (when (and text (not (empty-string-p text)))
+          (delete-region (- p1 2) p3)
+          (insert (format "%s [%s]"
+                          text
+                          (if use-annotations
+                              (+ 1 (length links))
+                            href))))
+        (grc-annotate-anchors use-annotations (append links (list href))))
+    (when use-annotations
+      (insert "\n\nLinks:\n")
+      (reduce (lambda (n l)
+                (insert "[" (prin1-to-string n) "] " l "\n")
+                (+ 1 n)) links :initial-value 1))))
+
+(defun grc-clean-summary (summary)
+  (with-temp-buffer
+    (decode-coding-string summary 'utf-8)
+    (goto-char (point-min))
+    (grc-annotate-anchors grc-use-anchor-annotations)
+
+    (goto-char (point-min))
+    (grc-replace-regexp "<br.*?>" "\n")
+    (goto-char (point-min))
+    (grc-strip-html)
+    (buffer-substring (point-min) (point-max))))
+
 (defun grc-prepare-text (text)
   (when text
     (with-temp-buffer
