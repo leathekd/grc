@@ -48,7 +48,8 @@
     ;; TODO: could be many links here...
     (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
     (source     . ,(or (aget (first (aget json-entry 'via)) 'title)
-                       (grc-get-in json-entry '(origin title))))
+                       (grc-get-in json-entry '(origin title))
+                       (format "%s's Shared Items" (aget json-entry 'author))))
     (feed       . ,(grc-get-in json-entry '(origin streamId)))
     (summary    . ,(grc-get-in json-entry '(summary content)))
     (content    . ,(or (grc-get-in json-entry '(content content))))

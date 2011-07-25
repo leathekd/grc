@@ -71,7 +71,9 @@
     (while keywords
       (goto-char (point-min))
       (setq kw (car keywords))
-      (while (search-forward kw nil t)
+      (while (and kw
+                  (not (empty-string-p kw))
+                  (search-forward kw nil t))
         (setq bounds `(,(point) . ,(- (point) (length kw))))
         (setq word (buffer-substring-no-properties
                     (car bounds) (cdr bounds)))
