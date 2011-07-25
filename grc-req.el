@@ -30,6 +30,8 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(require 'json)
+
 (defvar grc-auth-header-format
   "--header 'Authorization: OAuth %s'"
   "HTTP authorization headers to send.")
@@ -39,12 +41,12 @@
   "Base URL for Google Reader  API.")
 
 (defvar grc-req-subscribed-feed-list-url
-  (concat greader-base-url
+  (concat grc-req-base-url
           "api/0/subscription/list?output=json")
   "URL for retrieving list of subscribed feeds.")
 
 (defvar grc-req-unread-count-url
-  (concat greader-base-url
+  (concat grc-req-base-url
           "api/0/unread-count?all=true&output=json")
   "URL for retrieving unread counts for subscribed  feeds.")
 
@@ -152,7 +154,6 @@
            (floor (* 1000000 (float-time)))
            (grc-auth-get-action-token))))
 
-;; TODO: replace greader stuff
 (defun grc-req-subscriptions ()
   (grc-req-get-request grc-req-subscribed-feed-list-url))
 
