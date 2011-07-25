@@ -30,16 +30,91 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(defcustom grc-use-anchor-annotations t
+  "When w3m is not available, render links inline or add an annotation and
+list links at the bottom"
+  :group 'grc
+  :type 'boolean)
+
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
+(defvar grc-html-entity-list
+  '(("&amp;" "&")
+    ("&apos;" "'")
+    ("&gt;" ">")
+    ("&lt;" "<")
+    ("&quot;" "\"")))
+
 (defun grc-show-print-comment (comment)
-  (insert (format "%s - %s<br/>%s<br/><br/>"
+  (insert (format "%s - %s<br>%s<br><br>"
                   (aget comment 'author)
                   (format-time-string
                    "%a %m/%d %l:%M %p"
                    (seconds-to-time (aget comment 'createdTime)))
                   (or (aget comment 'htmlContent)
                       (aget comment 'plainContent)))))
+
+(defun grc-replace-string (from-string to-string)
+  (while (search-forward from-string nil t)
+    (replace-match to-string nil t)))
+
+(defun grc-replace-regexp (regexp to-string)
+  (while (search-forward-regexp regexp nil t)
+    (replace-match to-string nil t)))
+
+(defun grc-strip-html ()
+  (save-excursion
+    (mapcar '(lambda (pair)
+               (goto-char 1)
+               (grc-replace-string (car pair) (cadr pair)))
+            grc-html-entity-list)
+    (goto-char 1)
+    (grc-replace-regexp "<.*?>" "")
+    (goto-char 1)
+    (while (not (eobp))
+      (beginning-of-line)
+      (delete-horizontal-space)
+      (forward-line 1))
+    (goto-char 1)
+    (grc-replace-regexp "^\n+" "\n")))
+
+(defun grc-annotate-anchors (&optional use-annotations links)
+  (if (search-forward-regexp "<a" nil t)
+      (let* ((p1 (point))
+             (p2 (search-forward-regexp ">" nil t))
+             (p3 (search-forward-regexp "</a>" nil t))
+             (attrs (html2text-get-attr p1 p2))
+             (href (html2text-attr-value attrs "href"))
+             (text (buffer-substring-no-properties p2 (- p3 4)))
+             (text (with-temp-buffer
+                     (insert text)
+                     (grc-strip-html)
+                     (buffer-substring (point-min) (point-max)))))
+        (when (and text (not (empty-string-p text)))
+          (delete-region (- p1 2) p3)
+          (insert (format "%s [%s]"
+                          text
+                          (if use-annotations
+                              (+ 1 (length links))
+                            href))))
+        (grc-annotate-anchors use-annotations (append links (list href))))
+    (when use-annotations
+      (insert "\n\nLinks:\n")
+      (reduce (lambda (n l)
+                (insert "[" (prin1-to-string n) "] " l "\n")
+                (+ 1 n)) links :initial-value 1))))
+
+(defun grc-cleaned-summary (summary)
+  (with-temp-buffer
+    (insert summary)
+    (goto-char (point-min))
+    (grc-annotate-anchors grc-use-anchor-annotations)
+
+    (goto-char (point-min))
+    (grc-replace-regexp "<br.*?>" "\n")
+    (goto-char (point-min))
+    (grc-strip-html)
+    (buffer-substring (point-min) (point-max))))
 
 (defun grc-show-entry (entry)
   (let ((buffer (get-buffer-create grc-show-buffer)))
@@ -53,8 +128,7 @@
                          "No summary provided."))
             (title (or (aget entry 'title))))
         (erase-buffer)
-        (insert "<html><head><title></title></head><body>")
-        (mapcar (lambda (lst) (insert (format "%s:  %s<br/>"
+        (mapcar (lambda (lst) (insert (format "%s:  %s\n"
                                          (car lst) (cadr lst))))
                 `(("Title"  ,(aget entry 'title))
                   ("Link"   ,(aget entry 'link))
@@ -74,18 +148,19 @@
                                 " from "
                                 (aget prev-entry 'source))
                       "None"))))
-        (insert "<br/>" summary)
+        (if (featurep 'w3m)
+            (let ((before-point (point)))
+              (insert "\n" summary)
+              (let ((w3m-display-inline-images t))
+                (w3m-region (+ 1 before-point) (point))))
+          (insert "\n" (grc-cleaned-summary summary)))
 
         (when (aget entry 'comments t)
-          (insert "<br/><br/>Comments:<br/>")
+          (insert "\n\nComments:\n")
           (mapcar 'grc-show-print-comment
                   (grc-sort-by 'createdTime (aget entry 'comments))))
 
-        (insert "</body></html>")
-        (if (featurep 'w3m)
-            (let ((w3m-display-inline-images t))
-              (w3m-buffer))
-          (html2text))
+
         (grc-highlight-keywords (grc-keywords grc-entry-cache))))
     (setq grc-current-entry (grc-mark-read entry))
     (switch-to-buffer buffer)
@@ -153,20 +228,23 @@
 (defun grc-show-external-view-url ()
   "Load the URL/anchor under point in an external browser."
   (interactive)
-  (when (featurep 'w3m)
-    (w3m-external-view-this-url)))
+  (if (featurep 'w3m)
+      (w3m-external-view-this-url)
+    (ffap)))
 
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
   (interactive)
-  (when (featurep 'w3m)
-    (w3m-next-anchor)))
+  (if (featurep 'w3m)
+      (w3m-next-anchor)
+    (ffap-next-guess)))
 
 (defun grc-show-previous-anchor ()
   "Move the point to the previous anchor."
   (interactive)
-  (when (featurep 'w3m)
-    (w3m-previous-anchor)))
+  (if (featurep 'w3m)
+      (w3m-previous-anchor)
+    (ffap-next-guess t)))
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))

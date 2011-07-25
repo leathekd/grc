@@ -24,7 +24,6 @@
   - TODO: fill-buffer to prevent long lines (does w3m have something
     for this? or is generic "fill")
   - TODO: add comment
-  - TODO: make anchor functions work w/o w3m
 
 * Request
   - TODO: Should grc-req contain low level stuff (get, post) or
