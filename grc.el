@@ -142,16 +142,16 @@
     (delete-dups
      (append categories
              (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'source) 22 t)) entries)))))
+                             (aget e 'source t) 22 t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
   (let ((grc-read-history '())
-        (choices (sort grc-state-alist 'string<))
+        (choices (sort (copy-list grc-state-alist) 'string<))
         (completing-read-fn (if (featurep 'ido)
                                 'ido-completing-read
                               'completing-read)))
-    (cdr (rassoc (apply completing-read-fn prompt choices
+    (car (rassoc (apply completing-read-fn prompt choices
                         nil 'require-match nil grc-read-history)
                  grc-google-categories))))
 
