@@ -78,17 +78,27 @@
 (defvar grc-entry-cache nil)
 (defvar grc-current-entry nil)
 
+(defvar grc-html-entity-list
+  '(("&amp;" "&")
+    ("&apos;" "'")
+    ("&gt;" ">")
+    ("&lt;" "<")
+    ("&quot;" "\"")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
 (defun grc-replace-string (from-string to-string)
+  "Replaces all occurrences of from-string with to-string"
   (while (search-forward from-string nil t)
     (replace-match to-string nil t)))
 
 (defun grc-replace-regexp (regexp to-string)
+  "Replaces all regexp matches with to-string"
   (while (search-forward-regexp regexp nil t)
     (replace-match to-string nil t)))
 
 (defun grc-strip-html ()
+  "Converts some HTML entities and removes HTML tags."
   (save-excursion
     (mapcar '(lambda (pair)
                (goto-char 1)
@@ -105,6 +115,12 @@
     (grc-replace-regexp "^\n+" "\n")))
 
 (defun grc-annotate-anchors (&optional use-annotations links)
+  "Walks through a buffer of html and removes the anchor tags,
+  replacing them with the body of the anchor followed by the url in
+  brackets.  Alternatively, if use-annotations is true, it will put a
+  number in place of the link and list the links at the bottom.
+
+  links isn't meant to be passed in, it's used for recursive calls"
   (if (search-forward-regexp "<a" nil t)
       (let* ((p1 (point))
              (p2 (search-forward-regexp ">" nil t))
@@ -131,6 +147,7 @@
                 (+ 1 n)) links :initial-value 1))))
 
 (defun grc-clean-summary (summary)
+  "Meant for entry summary text, will annotate links and strip HTML"
   (with-temp-buffer
     (decode-coding-string summary 'utf-8)
     (goto-char (point-min))
@@ -143,15 +160,20 @@
     (buffer-substring (point-min) (point-max))))
 
 (defun grc-prepare-text (text)
+  "Meant for shorter strings (where link annotation isn't desired), strips HTML
+  and decodes entities"
   (when text
     (with-temp-buffer
       (insert (decode-coding-string text 'utf-8))
       (when (featurep 'w3m)
         (w3m-decode-entities))
-      (html2text)
+      (grc-strip-html)
       (buffer-substring (point-min) (point-max)))))
 
 (defun grc-truncate-text (text &optional max elide)
+  "Will truncate text down to max or 20 characters.
+
+  Optional elide will replace the last 3 characters with ..."
   (if text
       (let* ((max (or max 20))
              (len (length text))
@@ -168,6 +190,7 @@
     ""))
 
 (defun grc-format-categories (entry)
+  "Remove internal categories and convert the remaining to be human readable"
   (let* ((cats (aget entry 'categories t)))
     (mapconcat (lambda (c) (or (aget grc-google-categories c t) c))
                (reduce (lambda (categories c)
@@ -180,6 +203,7 @@
                " ")))
 
 (defun grc-title-for-printing (entry title-width)
+  "Given an entry, extract a title"
   (let ((title (aget entry 'title t))
         (streamId (aget entry 'feed))
         (summary (or (aget entry 'content t)
@@ -194,8 +218,8 @@
 
 (defun grc-keywords (entries)
   ;; TODO: too convoluted- simplify
-  ;;       this gets all the cats across entries, flattens to one
-  ;;       list, dedups, then translates to what the user sees
+  "Get all the categoriess across entries, flatten to one list, dedupe, then
+  translate to what the user sees"
   (let ((categories
          (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
                  (delete-dups (grc-flatten
@@ -247,6 +271,7 @@
         (view-buffer (current-buffer) 'kill-buffer-if-not-modified)))))
 
 (defun grc-entry-index (entry)
+  "Get the index of the given entry from the entry cache"
   (- (length grc-entry-cache)
      (length (member entry grc-entry-cache))))
 

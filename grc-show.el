@@ -38,13 +38,6 @@ list links at the bottom"
 
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
-(defvar grc-html-entity-list
-  '(("&amp;" "&")
-    ("&apos;" "'")
-    ("&gt;" ">")
-    ("&lt;" "<")
-    ("&quot;" "\"")))
-
 (defun grc-show-print-comment (comment)
   (insert (grc-prepare-text
            (format "%s - %s\n%s\n\n"
