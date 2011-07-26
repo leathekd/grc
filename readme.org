@@ -64,3 +64,12 @@ code cleanup to be done, but it's usable now (I'm using it full
 time), so it seems like the right time to share.
 
 Please fork, patch, offer suggestions, enter bugs, and enjoy!
+
+** Known issues
+- Missing features (add comment, comments view, email entry, plenty
+  more...)
+- When using w3m to render the entries (will happen automatically if
+  w3m is available) images take forever to load.
+- A good dose of refactoring and code cleanup is needed.
+
+Let me know what else you run into.
