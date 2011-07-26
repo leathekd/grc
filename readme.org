@@ -8,8 +8,8 @@ kept unread, starring, reading comments, etc.) with many others on the way.
 
 ** Installation
 
-Installation is done via Marmalade or can be done manually by adding
-the following to your init.el/.emacs file:
+Installation will be available via Marmalade soon but can be done
+manually by adding the following to your init.el/.emacs file:
 
 #+BEGIN_EXAMPLE
 (add-to-list 'load-path "path/to/grc")
