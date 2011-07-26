@@ -119,7 +119,7 @@
              params "&"))
 
 (defun grc-req-remote-entries (&optional state)
-  (let ((params `(("n"       . "100")
+  (let ((params `(("n"       . ,(grc-string grc-fetch-count))
                   ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
     (when (string= state "reading-list")
