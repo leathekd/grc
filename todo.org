@@ -1,5 +1,7 @@
 * General
   - TODO: tests.
+  - TODO: Code cleanup
+  - TODO: test without ido enabled.
 
 * Both list and show
   - TODO: Comment view (to keep up with ongoing discussion)
