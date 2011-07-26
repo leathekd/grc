@@ -1,0 +1,66 @@
+* grc-mode - Google Reader Client
+
+** Description
+
+grc aims to be a full featured Google Reader Client for Emacs.  It
+currently supports many of the common features (reading, marking read,
+kept unread, starring, reading comments, etc.) with many others on the way.
+
+** Installation
+
+Installation is done via Marmalade or can be done manually by adding
+the following to your init.el/.emacs file:
+
+#+BEGIN_EXAMPLE
+(add-to-list 'load-path "path/to/grc")
+(require 'grc)
+#+END_EXAMPLE
+
+Once the code is installed and in your load-path, there are a few
+one-time tasks to do.  Because grc uses OAuth2 as provided by Google,
+you need to register on the Google API site:
+
+1. Go to https://code.google.com/apis/console
+2. Click on "Create Project"
+3. Click on "API Access" in the left-hand panel
+4. Click the "Create a client ID" button
+5. In the dialog box that appears, click on the radio button next to
+   "Installed Application"
+6. Click OK
+7. Use customize or add the following to your init.el/.emacs
+#+BEGIN_EXAMPLE
+(setq grc-auth-client-id "<client id>")
+(setq grc-auth-client-secret "<client secret>")
+#+END_EXAMPLE
+8. Back in Emacs, enter "M-x grc"
+9. Emacs will redirect you to Google again, this time to get an
+   authorization code.
+10. Follow the instructions on the page, and once you agree, copy the
+    code back into Emacs (the minibuffer will be waiting with a
+    prompt)
+
+Whew! Happily that only has to happen the first time.  Hopefully, in
+the future, Google will enable anonymous API access and it won't be
+required anymore.
+
+grc will fetch a refresh token from Google.  This is what will allow
+it to stay authenticated without the need to log in again.  The
+refresh token is stored, by default, at ~/.grc-refresh-token.  You can
+change this via customize.
+
+** Usage
+The main entry point is "M-x grc".  If the grc command is preceeded with the prefix
+argument ("C-u M-x grc") it will prompt for the type of view to load (Starred
+items, Shared items, Kept Unread, etc.).  grc will load the results
+into the *grc list* buffer.  Hit "?" for more information.  
+
+Hitting RET on an item will load it in the *grc view* buffer.  Again,
+hitting "?" will provide more information about the available operations.
+
+** Future
+There are still some missing features that I am looking forward to
+adding (New Comments view, add comment, email, etc) and plenty of
+code cleanup to be done, but it's usable now (I'm using it full
+time), so it seems like the right time to share.
+
+Please fork, patch, offer suggestions, enter bugs, and enjoy!
