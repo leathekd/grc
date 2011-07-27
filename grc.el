@@ -149,7 +149,7 @@
 (defun grc-clean-summary (summary)
   "Meant for entry summary text, will annotate links and strip HTML"
   (with-temp-buffer
-    (decode-coding-string summary 'utf-8)
+    (insert (decode-coding-string summary 'utf-8))
     (goto-char (point-min))
     (grc-annotate-anchors grc-use-anchor-annotations)
 
