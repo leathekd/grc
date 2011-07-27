@@ -74,14 +74,18 @@
   (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((inhibit-read-only t))
       (grc-list-mode)
-      (grc-list-header-line)
       (erase-buffer)
       (setq grc-entry-cache
             (grc-sort-by (or grc-current-sort grc-default-sort-column)
                          entries grc-current-sort-reversed 'title))
+      (grc-list-header-line)
       (mapcar 'grc-list-print-entry grc-entry-cache)
       (grc-highlight-keywords (grc-keywords entries))
       (goto-char (point-min)))))
+
+(defun grc-list-incremental-display ()
+  (setq grc-entry-cache (append grc-entry-cache (grc-req-incremental-fetch)))
+  (grc-list-refresh))
 
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"
@@ -101,9 +105,10 @@
 
 (defun grc-list-header-line ()
   (setq header-line-format
-        (format "Google Reader Client -- Viewing: %s  Sort: %s %s"
+        (format "Google Reader Client -- Viewing: %s (%s)  Sort: %s %s"
                 (cdr (assoc grc-current-state
                             grc-google-categories))
+                (length grc-entry-cache)
                 (capitalize (symbol-name (or grc-current-sort
                                              grc-default-sort-column)))
                 (if grc-current-sort-reversed

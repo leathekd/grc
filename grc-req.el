@@ -50,6 +50,8 @@
           "api/0/unread-count?all=true&output=json")
   "URL for retrieving unread counts for subscribed  feeds.")
 
+(defvar grc-req-last-fetch-time nil)
+
 (defcustom grc-curl-program "/usr/bin/curl"
   "Full path of the curl executable"
   :group 'grc
@@ -118,12 +120,19 @@
   (mapconcat (lambda (p) (concat (car p) "=" (cdr p)))
              params "&"))
 
-(defun grc-req-remote-entries (&optional state)
+(defun grc-req-incremental-fetch ()
+  (when (string= grc-current-state "reading-list")
+    (grc-req-remote-entries grc-current-state grc-req-last-fetch-time)))
+
+(defun grc-req-remote-entries (&optional state since)
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
                   ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
     (when (string= state "reading-list")
+      (setq grc-req-last-fetch-time (floor (float-time)))
       (aput 'params "xt" "user/-/state/com.google/read"))
+    (when since
+      (aput 'params "ot" (prin1-to-string since)))
     (grc-parse-parse-response
      (grc-req-get-request (grc-req-stream-url state)
                           (grc-req-format-params params)))))
