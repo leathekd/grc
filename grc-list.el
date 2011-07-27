@@ -50,7 +50,7 @@
                       (* 60 60 24 7)))
          (static-width (+ 14 2 23 2 2
                           (length cats)
-                          (if (aget entry 'comments t) 3 0)
+                          (if (aget entry 'comments t) 4 0)
                           1))
          (title-width (- (window-width) static-width))
          (title (grc-prepare-text (grc-title-for-printing entry title-width))))
