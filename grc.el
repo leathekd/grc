@@ -132,43 +132,52 @@
                      (insert text)
                      (grc-strip-html)
                      (buffer-substring (point-min) (point-max)))))
-        (when (and text (not (empty-string-p text)))
-          (delete-region (- p1 2) p3)
-          (insert (format "%s [%s]"
-                          text
-                          (if use-annotations
-                              (+ 1 (length links))
-                            href))))
-        (grc-annotate-anchors use-annotations (append links (list href))))
+        (if (and text (not (empty-string-p (grc-trim text))))
+            (progn
+              (delete-region (- p1 2) p3)
+              (insert (format "%s [%s]"
+                              text
+                              (if use-annotations
+                                  (+ 1 (length links))
+                                href)))
+              (grc-annotate-anchors use-annotations
+                                    (append links (list href))))
+          (grc-annotate-anchors use-annotations links)))
     (when use-annotations
+      (goto-char (point-max))
       (insert "\n\nLinks:\n")
       (reduce (lambda (n l)
                 (insert "[" (prin1-to-string n) "] " l "\n")
                 (+ 1 n)) links :initial-value 1))))
 
-(defun grc-clean-summary (summary)
-  "Meant for entry summary text, will annotate links and strip HTML"
-  (with-temp-buffer
-    (insert (decode-coding-string summary 'utf-8))
-    (goto-char (point-min))
-    (grc-annotate-anchors grc-use-anchor-annotations)
+(defun grc-clean-buffer ()
+  "Runs grc-clean-text over the entire buffer"
+  (let ((cleaned (grc-clean-text (buffer-string))))
+    (erase-buffer)
+    (insert cleaned)))
 
-    (goto-char (point-min))
-    (grc-replace-regexp "<br.*?>" "\n")
-    (goto-char (point-min))
-    (grc-strip-html)
-    (buffer-substring (point-min) (point-max))))
-
-(defun grc-prepare-text (text)
-  "Meant for shorter strings (where link annotation isn't desired), strips HTML
-  and decodes entities"
+(defun grc-clean-text (text &optional skip-anchor-annotations)
+  "Meant for entry text, will annotate links and strip HTML"
   (when text
     (with-temp-buffer
       (insert (decode-coding-string text 'utf-8))
       (when (featurep 'w3m)
         (w3m-decode-entities))
+      (goto-char (point-min))
+      (if skip-anchor-annotations
+          (grc-annotate-anchors)
+        (grc-annotate-anchors grc-use-anchor-annotations))
+
+      (goto-char (point-min))
+      (grc-replace-regexp "<br.*?>" "\n")
+      (goto-char (point-min))
       (grc-strip-html)
       (buffer-substring (point-min) (point-max)))))
+
+(defun grc-prepare-text (text)
+  "Meant for shorter strings (where link annotation isn't desired), strips HTML
+  and decodes entities"
+  (grc-clean-text text t))
 
 (defun grc-truncate-text (text &optional max elide)
   "Will truncate text down to max or 20 characters.

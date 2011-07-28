@@ -39,15 +39,15 @@ list links at the bottom"
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 (defun grc-show-print-comment (comment)
-  (insert (grc-prepare-text
+  (insert (decode-coding-string
            (format "%s - %s\n%s\n\n"
                    (aget comment 'author)
                    (format-time-string
                     "%a %m/%d %l:%M %p"
                     (seconds-to-time (aget comment 'createdTime)))
                    (or (aget comment 'htmlContent)
-                       (aget comment 'plainContent))))))
-
+                       (aget comment 'plainContent)))
+           'utf-8)))
 
 (defun grc-show-entry (entry)
   (let ((buffer (get-buffer-create grc-show-buffer)))
@@ -80,17 +80,31 @@ list links at the bottom"
                                                 " from "
                                                 (aget prev-entry 'source)))
                       "None"))))
-        (if (featurep 'w3m)
-            (let ((before-point (point)))
-              (insert "\n" summary)
-              (let ((w3m-display-inline-images t))
-                (w3m-region (+ 1 before-point) (point))))
-          (insert "\n" (grc-clean-summary summary)))
 
-        (when (aget entry 'comments t)
-          (insert "\n\nComments:\n")
-          (mapcar 'grc-show-print-comment
-                  (grc-sort-by 'createdTime (aget entry 'comments))))
+        (let ((before (point)))
+          (insert "\n" summary)
+
+          (when (aget entry 'comments t)
+            (insert "\n\nComments:\n")
+            (mapcar 'grc-show-print-comment
+                    (grc-sort-by 'createdTime (aget entry 'comments))))
+
+          (if (featurep 'w3m)
+              (progn
+                (goto-char (point-min))
+                (grc-replace-string "\n" "<br />")
+                (let ((w3m-display-inline-images t)
+                      (w3m-fill-column 80))
+                  (w3m-region (point-min) (point-max))))
+            (progn
+              (grc-clean-buffer)
+              (if grc-use-anchor-annotations
+                  (progn
+                    (goto-char (point-max))
+                    (let ((after (search-backward-regexp "\n\nLinks:\n" nil t)))
+                      (when after
+                        (fill-region before after))))
+                (fill-region before (point-max))))))
 
         (grc-highlight-keywords (grc-keywords grc-entry-cache))))
     (setq grc-current-entry (grc-mark-read entry))

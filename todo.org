@@ -1,31 +1,32 @@
 * General
-  - TODO: tests.
-  - TODO: Code cleanup
-  - TODO: test without ido enabled.
+** TODO tests.
+** TODO Code cleanup
+** TODO test without ido enabled.
 
 * Both list and show
-  - TODO: Comment view (to keep up with ongoing discussion)
-  - TODO: share
-  - TODO: adding note - edit w/ snippet=note
-  - TODO: emailing (doesn't seem like I can use the same method google uses)
-  - TODO: feed icons?
-  - TODO: comment icon, user pictures with comments?
+** TODO handle html entities w/o w3m
+** TODO Comment view (to keep up with ongoing discussion)
+** TODO share
+** TODO adding note - edit w/ snippet=note
+** TODO emailing (doesn't seem like I can use the same method google uses)
+** TODO feed icons?
+** TODO comment icon, user pictures with comments?
 
 * List view
-  - TODO: pagination
-  - TODO: add counts to header line
-  - TODO: add years when looking at older posts
-  - TODO: operations on regions (read, etc)
-  - TODO: flexible columns? - calc max col sizes upfront
-  - TODO: investigate other ways of refreshing view (delete lines, etc)
-    for refreshing a line - modify entry, delete line, redraw
-  - TODO: search
+** TODO pagination
+** TODO add counts to header line
+** TODO add years when looking at older posts
+** TODO operations on regions (read, etc)
+** TODO flexible columns? - calc max col sizes upfront
+** TODO investigate other ways of refreshing view (delete lines, etc)
+   for refreshing a line - modify entry, delete line, redraw
+** TODO search
 
 * Show view
-  - TODO: fill-buffer to prevent long lines (does w3m have something
-    for this? or is generic "fill")
-  - TODO: add comment
+** DONE fill-buffer to prevent long lines
+** DONE fix rendering without w3m
+** TODO add comment
 
 * Request
-  - TODO: Should grc-req contain low level stuff (get, post) or
-    higher level stuff (mark-all-read), or both?  It's inbetween now...
+** TODO Should grc-req contain low level stuff (get, post) or
+   higher level stuff (mark-all-read), or both?  It's inbetween now...

@@ -31,6 +31,12 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(defun grc-trim (s)
+  "Remove whitespace at beginning and end of string."
+  (if (string-match "\\`[ \t\n\r]+" s) (setq s (replace-match "" t t s)))
+  (if (string-match "[ \t\n\r]+\\'" s) (setq s (replace-match "" t t s)))
+  s)
+
 (defun grc-list (thing)
   "Return THING if THING is a list or a list with THING as its element."
   (if (listp thing)
