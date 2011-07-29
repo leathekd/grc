@@ -30,6 +30,16 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(defface grc-show-header-face
+  '((t :foreground "green" :bold t))
+  "Face used for displaying header names."
+  :group 'grc-faces)
+
+(defface grc-show-context-face
+  '((t (:foreground "DeepSkyBlue1" :bold t)))
+  "Face used for displaying next/previous story headers."
+  :group 'grc-faces)
+
 (defcustom grc-use-anchor-annotations t
   "When w3m is not available, render links inline or add an annotation and
 list links at the bottom"
@@ -105,7 +115,12 @@ list links at the bottom"
                         (fill-region before after))))
                 (fill-region before (point-max))))))
 
-        (grc-highlight-keywords (grc-keywords grc-entry-cache))))
+        (grc-highlight-keywords (append '("Title:" "Date:" "Source:" "Link:"
+                                          "Comments:" "Next Story:"
+                                          "Previous Story:")
+                                        (mapcar (lambda (c) (aget c 'author))
+                                                (aget entry 'comments t))
+                                        (grc-keywords grc-entry-cache)))))
     (setq grc-current-entry (grc-mark-read entry))
     (switch-to-buffer buffer)
     (grc-list-refresh)))
@@ -226,6 +241,12 @@ list links at the bottom"
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-show-mode-map)
+  (mapcar (lambda (kw)
+            (puthash kw 'grc-show-header-face grc-highlight-face-table))
+          '("Title:" "Date:" "Source:" "Link:" "Comments:"))
+  (mapcar (lambda (kw)
+            (puthash kw 'grc-show-context-face grc-highlight-face-table))
+          '("Next Story:" "Previous Story:"))
   (setq major-mode 'grc-show-mode
         mode-name "grc-show")
   (setq buffer-read-only t))

@@ -45,6 +45,11 @@
 
 
 (defgroup grc nil "Google Reader Client for Emacs")
+
+(defgroup grc-faces
+  nil "Group for grc related faces"
+  :group 'grc)
+
 (defcustom grc-enable-hl-line t
   "Turn on hl-line-mode in the grc list buffer"
   :type  'boolean
