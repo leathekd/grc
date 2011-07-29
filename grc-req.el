@@ -79,8 +79,9 @@
          (resp (shell-command-to-string command)))
     (cond
      (raw-get resp)
-     ((string-match "^{" resp) (let ((json-array-type 'list))
-                                 (json-read-from-string resp)))
+     ((string-match "^{" resp)
+      (let ((json-array-type 'list))
+        (json-read-from-string (decode-coding-string resp 'utf-8))))
      ((string-match "^OK" resp) "OK")
      (t (error "Error fetching: %s?%s\nFull command: %s\nResponse: %s"
                endpoint request command resp)))))
@@ -95,8 +96,9 @@
                    endpoint))
          (resp (shell-command-to-string command)))
     (cond
-     ((string-match "^{" resp) (let ((json-array-type 'list))
-                                 (json-read-from-string resp)))
+     ((string-match "^{" resp)
+      (let ((json-array-type 'list))
+        (json-read-from-string (decode-coding-string resp 'utf-8))))
      ((string-match "^OK" resp) "OK")
      (t (error "Error fetching: %s?%s\nFull command: %s\nResponse: %s"
                endpoint request command resp)))))

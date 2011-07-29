@@ -39,15 +39,13 @@ list links at the bottom"
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 (defun grc-show-print-comment (comment)
-  (insert (decode-coding-string
-           (format "%s - %s\n%s\n\n"
-                   (aget comment 'author)
-                   (format-time-string
-                    "%a %m/%d %l:%M %p"
-                    (seconds-to-time (aget comment 'createdTime)))
-                   (or (aget comment 'htmlContent)
-                       (aget comment 'plainContent)))
-           'utf-8)))
+  (insert (format "%s - %s\n%s\n\n"
+                  (aget comment 'author)
+                  (format-time-string
+                   "%a %m/%d %l:%M %p"
+                   (seconds-to-time (aget comment 'createdTime)))
+                  (or (aget comment 'htmlContent)
+                      (aget comment 'plainContent)))))
 
 (defun grc-show-entry (entry)
   (let ((buffer (get-buffer-create grc-show-buffer)))

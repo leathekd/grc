@@ -160,7 +160,7 @@
   "Meant for entry text, will annotate links and strip HTML"
   (when text
     (with-temp-buffer
-      (insert (decode-coding-string text 'utf-8))
+      (insert text)
       (when (featurep 'w3m)
         (w3m-decode-entities))
       (goto-char (point-min))
