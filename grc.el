@@ -221,8 +221,7 @@
     (if title
         title
       (if (string-match "post$" streamId)
-          (grc-truncate-text (substring summary 0 (string-match "<br" summary))
-                             title-width t)
+          (substring summary 0 (string-match "<br" summary))
         "No title provided."))))
 
 (defun grc-keywords (entries)
