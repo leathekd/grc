@@ -53,7 +53,7 @@
                           (if (aget entry 'comments t) 4 0)
                           1))
          (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry title-width))))
+         (title (grc-prepare-text (grc-title-for-printing entry))))
     (insert
      (format "%-14s  %-23s  %s"
              (format-time-string

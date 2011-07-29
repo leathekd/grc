@@ -211,7 +211,7 @@
                        :initial-value cats)
                " ")))
 
-(defun grc-title-for-printing (entry title-width)
+(defun grc-title-for-printing (entry)
   "Given an entry, extract a title"
   (let ((title (aget entry 'title t))
         (streamId (aget entry 'feed))

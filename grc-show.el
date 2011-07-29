@@ -60,7 +60,8 @@ list links at the bottom"
         (erase-buffer)
         (mapcar (lambda (lst) (insert (format "%s:  %s\n"
                                          (car lst) (cadr lst))))
-                `(("Title"  ,(grc-prepare-text (aget entry 'title)))
+                `(("Title"  ,(grc-prepare-text
+                              (grc-title-for-printing entry)))
                   ("Link"   ,(aget entry 'link))
                   ("Date"   ,(format-time-string
                               "%a %m/%d %l:%M %p"
@@ -68,15 +69,15 @@ list links at the bottom"
                   ("Source" ,(aget entry 'source))
                   ("Next Story"
                    ,(if next-entry
-                        (grc-prepare-text (concat (aget next-entry 'title)
-                                                " from "
-                                                (aget next-entry 'source)))
+                        (grc-prepare-text (concat
+                                           (grc-title-for-printing next-entry)
+                                           " [" (aget next-entry 'source) "]"))
                       "None"))
                   ("Previous Story"
                    ,(if prev-entry
-                        (grc-prepare-text (concat (aget prev-entry 'title)
-                                                " from "
-                                                (aget prev-entry 'source)))
+                        (grc-prepare-text (concat
+                                           (grc-title-for-printing prev-entry)
+                                           " [" (aget prev-entry 'source) "]"))
                       "None"))))
 
         (let ((before (point)))
