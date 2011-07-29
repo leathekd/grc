@@ -114,7 +114,7 @@
     (goto-char 1)
     (grc-replace-regexp "^\n+" "\n")))
 
-(defun grc-annotate-anchors (&optional use-annotations links)
+(defun grc-footnote-anchors (&optional use-annotations links)
   "Walks through a buffer of html and removes the anchor tags,
   replacing them with the body of the anchor followed by the url in
   brackets.  Alternatively, if use-annotations is true, it will put a
@@ -135,14 +135,15 @@
         (if (and text (not (empty-string-p (grc-trim text))))
             (progn
               (delete-region (- p1 2) p3)
-              (insert (format "%s [%s]"
-                              text
-                              (if use-annotations
-                                  (+ 1 (length links))
-                                href)))
-              (grc-annotate-anchors use-annotations
+              (insert text)
+              (when (not (string= text href))
+                (insert (format " [%s]"
+                                (if use-annotations
+                                    (+ 1 (length links))
+                                  href))))
+              (grc-footnote-anchors use-annotations
                                     (append links (list href))))
-          (grc-annotate-anchors use-annotations links)))
+          (grc-footnote-anchors use-annotations links)))
     (when use-annotations
       (goto-char (point-max))
       (insert "\n\nLinks:\n")
@@ -157,16 +158,15 @@
     (insert cleaned)))
 
 (defun grc-clean-text (text &optional skip-anchor-annotations)
-  "Meant for entry text, will annotate links and strip HTML"
+  "Meant for entry text, will footnote links and strip HTML"
   (when text
     (with-temp-buffer
       (insert text)
       (when (featurep 'w3m)
         (w3m-decode-entities))
       (goto-char (point-min))
-      (if skip-anchor-annotations
-          (grc-annotate-anchors)
-        (grc-annotate-anchors grc-use-anchor-annotations))
+      (unless skip-anchor-annotations
+        (grc-footnote-anchors grc-use-anchor-annotations))
 
       (goto-char (point-min))
       (grc-replace-regexp "<br.*?>" "\n")
