@@ -47,8 +47,20 @@
 
 (defvar grc-req-unread-count-url
   (concat grc-req-base-url
-          "api/0/unread-count?all=true&output=json")
-  "URL for retrieving unread counts for subscribed  feeds.")
+          "api/0/unread-count")
+  "URL for retrieving unread counts for subscribed feeds.")
+
+(defvar grc-req-preference-list-url
+  (concat grc-req-base-url
+          "api/0/preference/list?&output=json")
+  "URL for retrieving preferences stored by Google Reader.
+  For the most part, this is only used by the Google Reader UI,
+  grc just gets and sets the last-allcomments-view pref.")
+
+(defvar grc-req-preference-set-url
+  (concat grc-req-base-url
+          "api/0/preference/set")
+  "URL for setting a preference in Google Reader.")
 
 (defvar grc-req-last-fetch-time nil)
 
@@ -107,7 +119,6 @@
 (defvar grc-req-stream-url-pattern
   "http://www.google.com/reader/api/0/stream/contents/%s")
 
-;; TODO: sharers, n=100, output=json
 (defun grc-req-stream-url (&optional state)
   (let ((stream-state (if (null state)
                           ""
@@ -122,22 +133,52 @@
   (when (string= grc-current-state "reading-list")
     (grc-req-remote-entries grc-current-state grc-req-last-fetch-time)))
 
+;; TODO: Need to factor out the state specific voodoo into something
+;; less kludgy
 (defun grc-req-remote-entries (&optional state since)
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
                   ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
-    (when (string= state "reading-list")
+    (cond
+     ((string= state "reading-list")
       (setq grc-req-last-fetch-time (floor (float-time)))
-      (aput 'params "xt" "user/-/state/com.google/read"))
+      (aput 'params "xt" "user/-/state/com.google/read")
+      (aput 'params "r" "n"))
+     ((string= state "broadcast-friends-comments")
+      (aput 'params "co" "true")
+      (aput 'params "r" "c")))
     (when since
       (aput 'params "ot" (prin1-to-string since)))
-    (grc-parse-parse-response
-     (grc-req-get-request (grc-req-stream-url state)
-                          (grc-req-format-params params)))))
+    (let ((resp (grc-parse-parse-response
+                 (grc-req-get-request (grc-req-stream-url state)
+                                      (grc-req-format-params params)))))
+      (if (string= state "broadcast-friends-comments")
+          (grc-req-set-preference "last-allcomments-view"
+                                  (floor (* 1000000 (float-time)))))
+      resp)))
 
 (defun grc-req-friends ()
   (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"
                        "output=json"))
+
+(defun grc-req-unread-comment-count ()
+  (let* ((unread-counts
+          (aget (grc-req-get-request
+                 grc-req-unread-count-url
+                 `(("n"           . ,(grc-string grc-fetch-count))
+                   ("output"      . "json")
+                   ("ck"          . ,(grc-string (floor (float-time))))
+                   ("all"         . "true")
+                   ("allcomments" . "true")
+                   ("sharers"     . ,(grc-req-sharers-hash))
+                   ("client"      . "emacs-grc-client")))
+                              'unreadcounts t))
+         (unread-comments
+          (first (remove-if-not (lambda (c)
+                                  (string-match "broadcast-friends-comments"
+                                                (aget c 'id)))
+                                unread-counts))))
+    (aget unread-comments 'count t)))
 
 (defvar grc-req-sharers-hash-val nil "caches the value of the sharers hash")
 (defun grc-req-sharers-hash ()
@@ -163,6 +204,12 @@
 
 (defun grc-req-subscriptions ()
   (grc-req-get-request grc-req-subscribed-feed-list-url))
+
+(defun grc-req-set-preference (key val)
+  (grc-req-post-request grc-req-preference-set-url
+                        `(("k" . ,(grc-string key))
+                          ("v" . ,(grc-string val))
+                          ("T" . ,(grc-string (grc-auth-get-action-token))))))
 
 (provide 'grc-req)
 ;;; grc-req.el ends here

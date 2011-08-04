@@ -32,7 +32,7 @@
 ;;; Code:
 (defvar grc-sort-columns '(date source))
 (defvar grc-current-sort nil)
-(defvar grc-current-sort-reversed nil)
+(defvar grc-current-sort-reversed t)
 (defcustom grc-default-sort-column 'date
   "Default column with which to sort the list view"
   :group 'grc
@@ -75,9 +75,7 @@
     (let ((inhibit-read-only t))
       (grc-list-mode)
       (erase-buffer)
-      (setq grc-entry-cache
-            (grc-sort-by (or grc-current-sort grc-default-sort-column)
-                         entries grc-current-sort-reversed 'title))
+      (setq grc-entry-cache entries)
       (grc-list-header-line)
       (mapcar 'grc-list-print-entry grc-entry-cache)
 
@@ -91,7 +89,7 @@
       (goto-char (point-min)))))
 
 (defun grc-list-incremental-display ()
-  (setq grc-entry-cache (append grc-entry-cache (grc-req-incremental-fetch)))
+  (setq grc-entry-cache (append (grc-req-incremental-fetch) grc-entry-cache))
   (grc-list-refresh))
 
 (defun grc-list-get-current-entry ()
@@ -115,10 +113,11 @@
 
 (defun grc-list-header-line ()
   (setq header-line-format
-        (format "Google Reader Client -- Viewing: %s (%s)  Sort: %s %s"
+        (format "Google Reader Client -- Viewing: %s (%s) %s  Sort: %s %s"
                 (cdr (assoc grc-current-state
                             grc-google-categories))
                 (length grc-entry-cache)
+                (if (grc-req-unread-comment-count) "[C]" "")
                 (capitalize (symbol-name (or grc-current-sort
                                              grc-default-sort-column)))
                 (if grc-current-sort-reversed
@@ -176,11 +175,11 @@
   (let* ((feed-name (when (and feed (interactive-p))
                       (ido-completing-read "Feed: "
                                            (mapcar (lambda (e) (aget e
-                                                                     'source t))
+                                                                'source t))
                                                    grc-entry-cache)
                                            nil t)))
          (items (remove-if-not (lambda (e) (string= feed-name
-                                                    (aget e 'source t)))
+                                               (aget e 'source t)))
                                grc-entry-cache))
          (src (aget (first items) 'feed t)))
     (grc-req-mark-all-read src)
