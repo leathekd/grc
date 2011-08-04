@@ -2,31 +2,29 @@
 ** TODO tests.
 ** TODO Code cleanup
 ** TODO test without ido enabled.
-
 * Both list and show
 ** TODO handle html entities w/o w3m
-** TODO Comment view (to keep up with ongoing discussion)
+** DONE Comment view (to keep up with ongoing discussion)
 ** TODO share
 ** TODO adding note - edit w/ snippet=note
 ** TODO emailing (doesn't seem like I can use the same method google uses)
 ** TODO feed icons?
 ** TODO comment icon, user pictures with comments?
-
 * List view
 ** TODO pagination
-** TODO add counts to header line
+** DONE add counts to header line
+** DONE add new comments indicator to header line
 ** TODO add years when looking at older posts
 ** TODO operations on regions (read, etc)
 ** TODO flexible columns? - calc max col sizes upfront
 ** TODO investigate other ways of refreshing view (delete lines, etc)
    for refreshing a line - modify entry, delete line, redraw
 ** TODO search
-
 * Show view
 ** DONE fill-buffer to prevent long lines
 ** DONE fix rendering without w3m
+** TODO links should respond to mouse clicks
 ** TODO add comment
-
 * Request
 ** TODO Should grc-req contain low level stuff (get, post) or
    higher level stuff (mark-all-read), or both?  It's inbetween now...
