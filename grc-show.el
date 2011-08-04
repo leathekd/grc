@@ -66,7 +66,8 @@ list links at the bottom"
             (prev-entry (cadr (member entry (reverse grc-entry-cache))))
             (summary (or (aget entry 'content t)
                          (aget entry 'summary t)
-                         "No summary provided.")))
+                         "No summary provided."))
+            (comments (aget entry 'comments t)))
         (erase-buffer)
         (mapcar (lambda (lst) (insert (format "%s:  %s\n"
                                          (car lst) (cadr lst))))
@@ -93,10 +94,10 @@ list links at the bottom"
         (let ((before (point)))
           (insert "\n" summary)
 
-          (when (aget entry 'comments t)
-            (insert "\n\nComments:\n")
+          (when comments
+            (insert "\n\nComments: (" (grc-string (length comments)) ")\n")
             (mapcar 'grc-show-print-comment
-                    (grc-sort-by 'createdTime (aget entry 'comments))))
+                    (grc-sort-by 'createdTime comments)))
 
           (if (featurep 'w3m)
               (progn
@@ -119,7 +120,7 @@ list links at the bottom"
                                           "Comments:" "Next Story:"
                                           "Previous Story:")
                                         (mapcar (lambda (c) (aget c 'author))
-                                                (aget entry 'comments t))
+                                                comments)
                                         (grc-keywords grc-entry-cache)))))
     (setq grc-current-entry (grc-mark-read entry))
     (switch-to-buffer buffer)
