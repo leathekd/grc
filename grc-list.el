@@ -80,6 +80,13 @@
                          entries grc-current-sort-reversed 'title))
       (grc-list-header-line)
       (mapcar 'grc-list-print-entry grc-entry-cache)
+
+      ;; remove final trailing newline
+      (goto-char (point-max))
+      (delete-horizontal-space)
+      (when (> 1 (point))
+        (delete-backward-char 1))
+
       (grc-highlight-keywords (grc-keywords entries))
       (goto-char (point-min)))))
 
@@ -89,7 +96,10 @@
 
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"
-  (nth (- (line-number-at-pos) 1) grc-entry-cache))
+  (let ((entry (nth (- (line-number-at-pos) 1) grc-entry-cache)))
+    (if entry
+        entry
+      (error "No entry at point."))))
 
 (defun grc-list-next-entry ()
   "Move the point to the next entry."
