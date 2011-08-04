@@ -182,7 +182,9 @@ list links at the bottom"
   (if (eobp)
       (grc-show-next-entry)
     (let ((scroll-error-top-bottom t))
-      (scroll-up-command 25))))
+      (scroll-up-command 25)
+      (when (eobp)
+        (grc-show-next-entry)))))
 
 (defun grc-show-external-view-url ()
   "Load the URL/anchor under point in an external browser."
