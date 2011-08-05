@@ -57,6 +57,21 @@ into the *grc list* buffer.  Hit "?" for more information.
 Hitting RET on an item will load it in the *grc view* buffer.  Again,
 hitting "?" will provide more information about the available operations.
 
+** Tips
+*** Auto update
+    To have grc pull new items on a regular basis, add the following
+    to your config:
+
+    #+BEGIN_EXAMPLE
+    (require 'timer)
+    (setq grc-refresh-timer
+        (run-with-timer
+         60 300
+         'grc-list-incremental-display))
+    #+END_EXAMPLE
+
+    Note, this won't remove entries marked as read.
+
 ** Future
 There are still some missing features that I am looking forward to
 adding (New Comments view, add comment, email, etc) and plenty of
@@ -73,3 +88,17 @@ Please fork, patch, offer suggestions, enter bugs, and enjoy!
 - A good dose of refactoring and code cleanup is needed.
 
 Let me know what else you run into.
+
+** Resources
+
+Here are some great resources and code for the (sadly) unofficial
+Google Reader API:
+
+- grc began as an extension to the g-client greader provided as part of
+the Emacspeak project @ http://emacspeak.sourceforge.net/
+- Martin Doms has provided some useful documentation @
+  http://blog.martindoms.com/2009/08/15/using-the-google-reader-api-part-1/
+- Mihai Parparita is providing some excellent unofficial documentation @ 
+  http://code.google.com/p/google-reader-api/w/list
+- The Friends of the Google Reader API @
+  http://groups.google.com/group/fougrapi
