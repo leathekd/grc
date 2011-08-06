@@ -62,6 +62,11 @@
           "api/0/preference/set")
   "URL for setting a preference in Google Reader.")
 
+(defvar grc-req-edit-tag-url
+  (concat grc-req-base-url
+          "api/0/edit-tag")
+  "URL for setting a preference in Google Reader.")
+
 (defvar grc-req-last-fetch-time nil)
 
 (defcustom grc-curl-program "/usr/bin/curl"
@@ -111,10 +116,6 @@
 (defun grc-req-post-request (endpoint params &optional no-auth raw-response)
   (grc-req-do-request "POST" endpoint params no-auth raw-response))
 
-(defun grc-req-send-edit-request (request)
-  (grc-req-post-request
-   "http://www.google.com/reader/api/0/edit-tag?client=emacs-g-client"
-   request))
 
 (defvar grc-req-stream-url-pattern
   "http://www.google.com/reader/api/0/stream/contents/%s")
@@ -157,6 +158,12 @@
                                   (floor (* 1000000 (float-time)))))
       resp)))
 
+(defun grc-req-edit-tag (id feed tag remove-p)
+  (grc-req-post-request
+   grc-req-edit-tag-url
+   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
+           (if remove-p "r" "a") tag feed id (grc-auth-get-action-token))))
+
 (defun grc-req-friends ()
   (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"
                        "output=json"))
@@ -185,14 +192,6 @@
   (or grc-req-sharers-hash-val
       (setq grc-req-sharers-hash-val
             (aget (grc-req-friends) 'encodedSharersList))))
-
-(defun grc-req-tag-request (entry tag remove)
-  (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
-          (if remove "r" "a")
-          tag
-          (aget entry 'feed)
-          (aget entry 'id)
-          (grc-auth-get-action-token)))
 
 (defun grc-req-mark-all-read (src)
   (grc-req-post-request

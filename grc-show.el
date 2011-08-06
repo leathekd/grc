@@ -134,12 +134,20 @@ list links at the bottom"
 (defun grc-show-mark-kept-unread (remove)
   "Mark the current entry as Keep Unread."
   (interactive "P")
-  (funcall (grc-mark-fn "kept-unread") grc-current-entry remove))
+  (funcall (grc-mark-fn "kept-unread") grc-current-entry remove)
+  (grc-list-refresh))
 
 (defun grc-show-mark-starred (remove)
   "Star the current entry."
   (interactive "P")
-  (funcall (grc-mark-fn "starred") grc-current-entry remove))
+  (funcall (grc-mark-fn "starred") grc-current-entry remove)
+  (grc-list-refresh))
+
+(defun grc-show-share (remove)
+  "Share the current entry.  Use the prefix operator to un-share."
+  (interactive "P")
+  (funcall (grc-mark-fn "broadcast") grc-current-entry remove)
+  (grc-list-refresh))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
@@ -217,6 +225,7 @@ list links at the bottom"
     (define-key map "*"               'grc-show-mark-starred)
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
+    (define-key map "!"               'grc-show-share)
     (define-key map "v"               'grc-show-view-external)
     (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
@@ -236,7 +245,8 @@ list links at the bottom"
   v      Load the current entry in an external browser.
   p      View the previous entry.
   n      View the next entry.
-  s      Star the current entry.
+  *      Star the current entry.  Use the prefix operator to un-star.
+  !      Share the current entry. Use the prefix operator to un-share.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.
   ?      Show the help message for the grc show view

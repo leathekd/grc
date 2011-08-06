@@ -169,6 +169,11 @@
   (interactive "P")
   (funcall (grc-list-mark-fn "starred") remove))
 
+(defun grc-list-share (remove)
+  "Share the current entry.  Use the prefix operator to un-share."
+  (interactive "P")
+  (funcall (grc-list-mark-fn "broadcast") remove))
+
 (defun grc-list-mark-all-read (feed)
   "Mark all as Read."
   (interactive "P")
@@ -224,6 +229,7 @@
     (define-key map "*"         'grc-list-mark-starred)
     (define-key map "n"         'grc-list-next-entry)
     (define-key map "p"         'grc-list-previous-entry)
+    (define-key map "!"         'grc-list-share)
     (define-key map " "         'grc-list-show-entry)
     (define-key map (kbd "RET") 'grc-list-show-entry)
     (define-key map "o"         'grc-list-sort)
@@ -248,7 +254,8 @@
   SPC  View the current entry.
   p    Move the point to the previous entry.
   n    Move the point to the next entry.
-  s    Star the current entry.  Use the prefix operator to un-star.
+  *    Star the current entry.  Use the prefix operator to un-star.
+  !    Share the current entry.  Use the prefix operator to un-share.
   x    Mark the current entry as Read and remove it immediately from the list.
   r    Mark the current entry as Read.  Use the prefix operator to unmark.
   k    Mark the current entry as Kept Unread.  Use the prefix operator to unmark

@@ -200,7 +200,7 @@
                    ""
                    (substring text 0 (if (> max len) len max)))))
         (if (and (< max len) elide)
-            (concat str "...")
+            (concat str "...") ;; … ?
           str))
     ""))
 
@@ -313,8 +313,8 @@
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-req-send-edit-request (grc-req-tag-request entry
-                                                                 ,tag remove))
+                 (grc-req-edit-tag (aget entry 'id) (aget entry 'feed) ,tag
+                                      remove)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
