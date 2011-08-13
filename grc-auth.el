@@ -154,5 +154,12 @@
       (grc-auth-re-authenticate)
     grc-auth-access-token))
 
+(defun grc-auth-logout ()
+  (when (file-exists-p grc-auth-refresh-token-file)
+    (delete-file grc-auth-refresh-token-file))
+  (setq grc-auth-access-token nil)
+  (setq grc-auth-refresh-token nil)
+  (setq grc-auth-action-token nil))
+
 (provide 'grc-auth)
 ;;; grc-auth.el ends here

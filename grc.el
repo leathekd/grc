@@ -265,6 +265,13 @@
   (grc-list-display (grc-req-remote-entries grc-current-state))
   (switch-to-buffer grc-list-buffer))
 
+;;;###autoload
+(defun grc-logout ()
+  "Logout and delete the refresh token.  This will force going through OAuth
+  again"
+  (interactive)
+  (grc-auth-logout))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
 (defun grc-kill-this-buffer ()
