@@ -45,7 +45,7 @@
   "Takes an entry and formats it into the line that'll appear on the list view"
   (let* ((source (grc-prepare-text (aget entry 'source t)))
          (cats (grc-format-categories entry))
-         (date (seconds-to-time (aget entry 'date t)))
+         (date (seconds-to-time (aget entry 'crawl-date t)))
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
          (static-width (+ 14 2 23 2 2

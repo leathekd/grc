@@ -44,6 +44,9 @@
 (defun grc-parse-process-entry (json-entry)
   `((id         . ,(aget json-entry 'id))
     (date       . ,(aget json-entry 'published))
+    (crawl-date . ,(string-to-int (substring
+                                   (aget json-entry 'crawlTimeMsec)
+                                   0 -3)))
     (title      . ,(aget json-entry 'title))
     ;; TODO: could be many links here...
     (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
