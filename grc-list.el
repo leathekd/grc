@@ -30,13 +30,13 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defvar grc-sort-columns '(date source))
+(defvar grc-sort-columns '(crawl-date source))
 (defvar grc-current-sort nil)
 (defvar grc-current-sort-reversed t)
-(defcustom grc-default-sort-column 'date
+(defcustom grc-default-sort-column 'crawl-date
   "Default column with which to sort the list view"
   :group 'grc
-  :type '(choice (symbol :tag "Date" 'date)
+  :type '(choice (symbol :tag "Date" 'crawl-date)
                  (symbol :tag "Source" 'source)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
@@ -214,6 +214,7 @@
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
+    (message "%s %s" grc-current-sort grc-current-sort-reversed)
     (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
                                        grc-current-sort-reversed 'title))
 
