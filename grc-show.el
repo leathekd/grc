@@ -146,7 +146,7 @@ list links at the bottom"
 (defun grc-show-share (remove)
   "Share the current entry.  Use the prefix operator to un-share."
   (interactive "P")
-  (funcall (grc-mark-fn "broadcast") grc-current-entry remove)
+  (grc-share grc-current-entry remove)
   (grc-list-refresh))
 
 (defun grc-show-kill-this-buffer ()

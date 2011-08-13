@@ -172,6 +172,12 @@
 (defun grc-list-share (remove)
   "Share the current entry.  Use the prefix operator to un-share."
   (interactive "P")
+  (grc-share (grc-list-get-current-entry) remove)
+  (grc-list-refresh))
+
+(defun grc-list-share (remove)
+  "Share the current entry.  Use the prefix operator to un-share."
+  (interactive "P")
   (funcall (grc-list-mark-fn "broadcast") remove))
 
 (defun grc-list-mark-all-read (feed)

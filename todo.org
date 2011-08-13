@@ -1,12 +1,13 @@
 * General
 ** TODO tests.
 ** TODO Code cleanup
+*** TODO grc-show-foo and grc-list-foo are usually only different in how they get the current entry. 
 ** TODO test without ido enabled.
 * Both list and show
 ** TODO handle html entities w/o w3m
 ** DONE Comment view (to keep up with ongoing discussion)
-** TODO share
-** TODO adding note - edit w/ snippet=note
+** DONE share
+** DONE share with note - edit w/ snippet=note
 ** TODO emailing (doesn't seem like I can use the same method google uses)
 ** TODO feed icons?
 ** TODO comment icon, user pictures with comments?

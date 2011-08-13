@@ -40,6 +40,7 @@
 (require 'grc-req)
 (require 'grc-parse)
 (require 'grc-highlight)
+(require 'grc-comment)
 (require 'grc-list)
 (require 'grc-show)
 
@@ -312,7 +313,7 @@
     (setcar mem entry)
     entry))
 
-(defun grc-mark-fn (tag)
+(defun grc-mark-fn (tag &optional extra-params)
   `(lambda (entry &optional remove)
      (let ((mem (member ,tag (aget entry 'categories))))
        (cond
@@ -321,7 +322,7 @@
         (t (condition-case err
                (progn
                  (grc-req-edit-tag (aget entry 'id) (aget entry 'feed) ,tag
-                                      remove)
+                                      remove ,extra-params)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
@@ -346,6 +347,19 @@
           (browse-url link)
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
+
+(defun grc-share (entry remove)
+  "Share the current entry.  Use the prefix operator to un-share."
+  (interactive "P")
+  (if (and (not remove)
+           (yes-or-no-p "Add comment?"))
+      (grc-comment-open-buffer
+       (lambda (comment entry)
+         (grc-req-share-with-comment comment entry)
+         (grc-list-refresh))
+       'grc-req-share-with-comment entry)
+    (funcall (grc-mark-fn "broadcast") entry remove))
+  (grc-list-refresh))
 
 (provide 'grc)
 ;;; grc.el ends here
