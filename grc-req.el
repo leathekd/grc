@@ -101,7 +101,7 @@
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
                            "?client=" grc-req-client-name
-                           "&ck=" (floor (* 1000000 (float-time)))
+                           "&ck=" (grc-string (floor (* 1000000 (float-time))))
                            "&output=json"))
          (params (if (listp params) (grc-req-format-params params) params))
          (command (format
