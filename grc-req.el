@@ -144,7 +144,7 @@
     (format grc-req-stream-url-pattern stream-state)))
 
 (defun grc-req-format-params (params)
-  (mapconcat (lambda (p) (concat (car p) "=" (cdr p)))
+  (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
              params "&"))
 
 (defun grc-req-incremental-fetch ()
@@ -209,7 +209,7 @@
                    ("all"         . "true")
                    ("allcomments" . "true")
                    ("sharers"     . ,(grc-req-sharers-hash))))
-                              'unreadcounts t))
+                'unreadcounts t))
          (unread-comments
           (first (remove-if-not (lambda (c)
                                   (string-match "broadcast-friends-comments"
@@ -241,22 +241,16 @@
                           ("T" . ,(grc-string (grc-auth-get-action-token))))))
 
 (defun grc-req-share-with-comment (comment entry)
-  (let ((params (format (concat "share=true&linkify=false&"
-                                "T=%s&"
-                                "annotation=%s&"
-                                "title=%s&"
-                                "snippet=%s&"
-                                "srcTitle=%s&"
-                                "srcUrl=%s&"
-                                "url=%s")
-                        (grc-auth-get-action-token)
-                        (url-hexify-string comment)
-                        (url-hexify-string (aget entry 'title))
-                        (url-hexify-string (or (aget entry 'summary t)
-                                               (aget entry 'content t)))
-                        (url-hexify-string (aget entry 'src-title))
-                        (url-hexify-string (aget entry 'src-url))
-                        (url-hexify-string (aget entry 'link)))))
+  (let ((params '(("share"      . "true")
+                  ("linkify"    . "true")
+                  ("T"          . (grc-auth-get-action-token))
+                  ("annotation" . comment)
+                  ("title"      . (aget entry 'title))
+                  ("snippet"    . (or (aget entry 'summary t)
+                                      (aget entry 'content t)))
+                  ("srcTitle"   . (aget entry 'src-title))
+                  ("srcUrl"     . (aget entry 'src-url))
+                  ("url"        . (aget entry 'link)))))
     (grc-req-post-request grc-req-edit-item-url params)))
 
 (provide 'grc-req)
