@@ -227,6 +227,7 @@ list links at the bottom"
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map "c"               'grc-show-add-comment)
     (define-key map " "               'grc-show-advance-or-show-next-entry)
     (define-key map "?"               'grc-show-help)
     (define-key map "q"               'grc-show-kill-this-buffer)
@@ -256,6 +257,7 @@ list links at the bottom"
   n      View the next entry.
   *      Star the current entry.  Use the prefix operator to un-star.
   !      Share the current entry. Use the prefix operator to un-share.
+  c      Add a comment to the current (shared) entry.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.
   ?      Show the help message for the grc show view
