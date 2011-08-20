@@ -348,6 +348,10 @@
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
 
+(defun grc-shared-p (entry)
+  (or (member "broadcast" (aget grc-current-entry 'categories))
+      (member "broadcast-friends" (aget grc-current-entry 'categories))))
+
 (defun grc-share (entry remove)
   "Share the current entry.  Use the prefix operator to un-share."
   (interactive "P")

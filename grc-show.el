@@ -152,9 +152,11 @@ list links at the bottom"
 (defun grc-show-add-comment ()
   "Comment on the current shared entry."
   (interactive)
-  ;;TODO: make sure it's a shared entry
-  (grc-add-comment grc-current-entry)
-  (grc-list-refresh))
+  (if (grc-shared-p grc-current-entry)
+      (progn
+        (grc-add-comment grc-current-entry)
+        (grc-list-refresh))
+    (error "Not a shared entry")))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
