@@ -77,18 +77,18 @@ list links at the bottom"
                   ("Date"   ,(format-time-string
                               "%a %m/%d %l:%M %p"
                               (seconds-to-time (aget entry 'date))))
-                  ("Source" ,(aget entry 'source))
+                  ("Source" ,(aget entry 'src-title))
                   ("Next Story"
                    ,(if next-entry
-                        (grc-prepare-text (concat
-                                           (grc-title-for-printing next-entry)
-                                           " [" (aget next-entry 'source) "]"))
+                        (grc-prepare-text
+                         (concat (grc-title-for-printing next-entry)
+                                 " [" (aget next-entry 'src-title) "]"))
                       "None"))
                   ("Previous Story"
                    ,(if prev-entry
-                        (grc-prepare-text (concat
-                                           (grc-title-for-printing prev-entry)
-                                           " [" (aget prev-entry 'source) "]"))
+                        (grc-prepare-text
+                         (concat (grc-title-for-printing prev-entry)
+                                 " [" (aget prev-entry 'src-title) "]"))
                       "None"))))
 
         (let ((before (point)))

@@ -30,20 +30,21 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defvar grc-sort-columns '(date source))
+(defvar grc-sort-columns '(("Date"   . crawl-date)
+                           ("Source" . src-title)))
 (defvar grc-current-sort nil)
 (defvar grc-current-sort-reversed t)
-(defcustom grc-default-sort-column 'date
+(defcustom grc-default-sort-column 'crawl-date
   "Default column with which to sort the list view"
   :group 'grc
-  :type '(choice (symbol :tag "Date" 'date)
-                 (symbol :tag "Source" 'source)))
+  :type '(choice (symbol :tag "Date" 'crawl-date)
+                 (symbol :tag "Source" 'src-title)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
-  (let* ((source (grc-prepare-text (aget entry 'source t)))
+  (let* ((source (grc-prepare-text (aget entry 'src-title t)))
          (cats (grc-format-categories entry))
          (date (seconds-to-time (aget entry 'crawl-date t)))
          (one-week (- (float-time (current-time))
@@ -118,8 +119,8 @@
                             grc-google-categories))
                 (length grc-entry-cache)
                 (if (grc-req-unread-comment-count) "[C]" "")
-                (capitalize (symbol-name (or grc-current-sort
-                                             grc-default-sort-column)))
+                (car (rassoc (or grc-current-sort grc-default-sort-column)
+                             grc-sort-columns))
                 (if grc-current-sort-reversed
                     "Descending" "Ascending"))))
 
@@ -186,11 +187,11 @@
   (let* ((feed-name (when (and feed (interactive-p))
                       (ido-completing-read "Feed: "
                                            (mapcar (lambda (e) (aget e
-                                                                'source t))
+                                                                'src-title t))
                                                    grc-entry-cache)
                                            nil t)))
          (items (remove-if-not (lambda (e) (string= feed-name
-                                               (aget e 'source t)))
+                                               (aget e 'src-title t)))
                                grc-entry-cache))
          (src (aget (first items) 'feed t)))
     (grc-req-mark-all-read src)
@@ -215,14 +216,14 @@
   Source Asc
   Source Desc"
   (interactive)
-  (let ((next-sort (or (cadr (member grc-current-sort grc-sort-columns))
-                       grc-default-sort-column)))
+  (let* ((sort-cols (mapcar 'cdr grc-sort-columns))
+         (next-sort (or (cadr (member grc-current-sort sort-cols))
+                        grc-default-sort-column)))
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
     (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
                                        grc-current-sort-reversed 'title))
-
     (grc-list-refresh)))
 
 (defvar grc-list-mode-map

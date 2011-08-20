@@ -57,9 +57,6 @@
     (src-id     . ,(grc-get-in json-entry '(origin streamId)))
 
     ;;TODO: remove these vvvvv
-    (source     . ,(or (aget (first (aget json-entry 'via)) 'title)
-                       (grc-get-in json-entry '(origin title))
-                       (format "%s's Shared Items" (aget json-entry 'author))))
     (feed       . ,(grc-get-in json-entry '(origin streamId)))
     ;;TODO: remove these ^^^^^
 

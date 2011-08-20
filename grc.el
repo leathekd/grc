@@ -243,7 +243,7 @@
     (delete-dups
      (append categories
              (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'source t) 22 t)) entries)))))
+                             (aget e 'src-title t) 22 t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
