@@ -355,11 +355,26 @@
            (yes-or-no-p "Add comment?"))
       (grc-comment-open-buffer
        (lambda (comment entry)
-         (grc-req-share-with-comment comment entry)
+         (grc-req-share-with-comment comment
+                                     (aget entry 'title)
+                                     (or (aget entry 'summary t)
+                                         (aget entry 'content t))
+                                     (aget entry 'src-title)
+                                     (aget entry 'src-url)
+                                     (aget entry 'link))
          (grc-list-refresh))
-       'grc-req-share-with-comment entry)
+       entry)
     (funcall (grc-mark-fn "broadcast") entry remove))
   (grc-list-refresh))
+
+(defun grc-add-comment (entry)
+  "Add a comment to the current entry"
+  (interactive "P")
+  (grc-comment-open-buffer
+   (lambda (comment entry)
+     (grc-req-add-comment (aget entry 'id) (aget entry 'src-id) comment)
+     (grc-list-refresh))
+   entry))
 
 (provide 'grc)
 ;;; grc.el ends here

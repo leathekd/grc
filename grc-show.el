@@ -149,6 +149,13 @@ list links at the bottom"
   (grc-share grc-current-entry remove)
   (grc-list-refresh))
 
+(defun grc-show-add-comment ()
+  "Comment on the current shared entry."
+  (interactive)
+  ;;TODO: make sure it's a shared entry
+  (grc-add-comment grc-current-entry)
+  (grc-list-refresh))
+
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
   (interactive)
