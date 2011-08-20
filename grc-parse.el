@@ -56,10 +56,6 @@
     (src-url    . ,(grc-get-in json-entry '(origin htmlUrl)))
     (src-id     . ,(grc-get-in json-entry '(origin streamId)))
 
-    ;;TODO: remove these vvvvv
-    (feed       . ,(grc-get-in json-entry '(origin streamId)))
-    ;;TODO: remove these ^^^^^
-
     (summary    . ,(grc-get-in json-entry '(summary content)))
     (content    . ,(grc-get-in json-entry '(content content)))
     (categories . ,(grc-parse-get-categories json-entry))

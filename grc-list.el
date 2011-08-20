@@ -193,7 +193,7 @@
          (items (remove-if-not (lambda (e) (string= feed-name
                                                (aget e 'src-title t)))
                                grc-entry-cache))
-         (src (aget (first items) 'feed t)))
+         (src (aget (first items) 'src-id t)))
     (grc-req-mark-all-read src)
     (mapcar (lambda (e) (grc-add-category e "read"))
             (or items grc-entry-cache)))

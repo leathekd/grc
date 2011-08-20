@@ -221,7 +221,7 @@
 (defun grc-title-for-printing (entry)
   "Given an entry, extract a title"
   (let ((title (aget entry 'title t))
-        (streamId (aget entry 'feed))
+        (streamId (aget entry 'src-id))
         (summary (or (aget entry 'content t)
                      (aget entry 'summary t)))
         (case-fold-search t))
@@ -321,7 +321,7 @@
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-req-edit-tag (aget entry 'id) (aget entry 'feed) ,tag
+                 (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
                                       remove ,extra-params)
                  (if (null remove)
                      (grc-add-category entry ,tag)
