@@ -40,13 +40,16 @@ you need to register on the Google API site:
     prompt)
 
 Whew! Happily that only has to happen the first time.  Hopefully, in
-the future, Google will enable anonymous API access and it won't be
-required anymore.
+the future, Google will enable anonymous API access and registering
+for a client id won't be required anymore.
 
 grc will fetch a refresh token from Google.  This is what will allow
 it to stay authenticated without the need to log in again.  The
 refresh token is stored, by default, at ~/.grc-refresh-token.  You can
-change this via customize.
+change where it goes via customize.  
+
+M-x grc-logout will remove the token and any cached tokens.  You will
+have to follow steps 8-10 the next time you want to use grc.
 
 ** Usage
 The main entry point is "M-x grc".  If the grc command is preceeded with the prefix
@@ -81,8 +84,7 @@ time), so it seems like the right time to share.
 Please fork, patch, offer suggestions, enter bugs, and enjoy!
 
 ** Known issues
-- Missing features (add comment, comments view, email entry, plenty
-  more...)
+- Missing features (email entry, edit/delete comments, probably more...)
 - When using w3m to render the entries (will happen automatically if
   w3m is available) images take forever to load.
 - A good dose of refactoring and code cleanup is needed.
