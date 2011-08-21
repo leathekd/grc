@@ -222,7 +222,6 @@
     (setq grc-current-sort-reversed (not grc-current-sort-reversed))
     (when (not grc-current-sort-reversed)
       (setq grc-current-sort next-sort))
-    (message "%s %s" grc-current-sort grc-current-sort-reversed)
     (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
                                        grc-current-sort-reversed 'title))
     (grc-list-refresh)))
