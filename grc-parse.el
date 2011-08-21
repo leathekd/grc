@@ -33,14 +33,15 @@
 ;;; Code:
 (defun grc-parse-get-categories (json-entry)
   "Extract categories and labels from the json entry"
-  (remove-if 'null
-             (mapcar (lambda (c)
-                       (let ((label-idx (string-match "/label/" c))
-                             (state-idx (string-match "/state/com.google/" c)))
-                         (cond
-                          (state-idx (substring c (+ state-idx 18)))
-                          (label-idx (substring c (+ label-idx 7))))))
-                     (aget json-entry 'categories))))
+  (delete-dups
+   (remove-if 'null
+              (mapcar (lambda (c)
+                        (let ((label-idx (string-match "/label/" c))
+                              (state-idx (string-match "/state/com.google/" c)))
+                          (cond
+                           (state-idx (substring c (+ state-idx 18)))
+                           (label-idx (substring c (+ label-idx 7))))))
+                      (aget json-entry 'categories)))))
 
 (defun grc-parse-process-entry (json-entry)
   "Extract all the fields grc needs from the json entry"

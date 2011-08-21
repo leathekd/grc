@@ -10,5 +10,3 @@
                                (string= "" (grc-trim (documentation x t)))))
                   (setq needs-docs (cons (symbol-name x) needs-docs)))))
     (should (eql nil (sort needs-docs 'string<)))))
-
-
