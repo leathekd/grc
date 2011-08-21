@@ -298,6 +298,7 @@
      (length (member entry grc-entry-cache))))
 
 (defun grc-add-category (entry category)
+  "Adds a category to the categories list inside the entry"
   (let ((mem (member entry grc-entry-cache)))
     (when (null (member category (aget entry 'categories t)))
       (aput 'entry 'categories
@@ -306,6 +307,7 @@
     entry))
 
 (defun grc-remove-category (entry category)
+  "Removes a category from the categories list inside the entry"
   (let ((mem (member entry grc-entry-cache)))
     (when (member category (aget entry 'categories t))
       (aput 'entry 'categories
@@ -314,6 +316,8 @@
     entry))
 
 (defun grc-mark-fn (tag &optional extra-params)
+  "Returns a function that will add/remove a category from an entry.
+  This function will make a remote call."
   `(lambda (entry &optional remove)
      (let ((mem (member ,tag (aget entry 'categories))))
        (cond
@@ -330,12 +334,15 @@
                              err))))))))
 
 (defun grc-mark-read (entry)
+  "Marks the entry as read on Google Reader"
   (funcall (grc-mark-fn "read") entry nil))
 
 (defun grc-mark-kept-unread (entry)
+  "Marks the entry as kept unread on Google Reader"
   (funcall (grc-mark-fn "kept-unread") entry nil))
 
 (defun grc-mark-starred (entry &optional remove)
+  "Marks the entry as starred on Google Reader"
   (funcall (grc-mark-fn "starred") entry remove))
 
 (defun grc-view-external (entry)

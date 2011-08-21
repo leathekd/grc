@@ -59,15 +59,18 @@
 (defvar grc-auth-action-token nil)
 
 (defun grc-auth-verify-config ()
+  "Verify that the client id and client secret are set"
   (unless (and grc-auth-client-id grc-auth-client-secret)
     (error "Missing Client Id and/or Client Secret.  See README for info.")))
 
 (defun grc-auth-get-auth-code ()
+  "Opens the browser to get the authorization code from Google."
   (grc-auth-verify-config)
   (browse-url (format grc-auth-authorization-code-url grc-auth-client-id))
   (read-from-minibuffer "Authorization Code: "))
 
 (defun grc-auth-save-refresh-token (refresh-token)
+  "Saves the refresh token to grc-auth-refresh-token-file"
   (with-current-buffer (get-buffer-create "*grc refresh token*")
     (erase-buffer)
     (insert refresh-token)
@@ -75,6 +78,7 @@
     (kill-buffer (current-buffer))))
 
 (defun grc-auth-restore-refresh-token ()
+  "Reads in the refresh token from grc-auth-refresh-token-file"
   (when (and (file-exists-p grc-auth-refresh-token-file)
              (< 0 (nth 7 (file-attributes grc-auth-refresh-token-file))))
     (with-current-buffer (find-file-noselect grc-auth-refresh-token-file t)
@@ -84,19 +88,23 @@
     grc-auth-refresh-token))
 
 (defun grc-auth-set-access-token (resp)
+  "Caches the short-lived access token from the server response"
   (setq grc-auth-access-token
         `((token   . ,(aget resp 'access_token t))
           (expires . ,(seconds-to-time (+ (aget resp 'expires_in)
                                           (float-time)))))))
 
 (defun grc-auth-get-access-token ()
+  "Gets the token value from the saved access token alist"
   (aget grc-auth-access-token 'token))
 
 (defun grc-auth-set-refresh-token (resp)
+  "Caches and saves the refresh token from the server response"
   (setq grc-auth-refresh-token (aget resp 'refresh_token))
   (grc-auth-save-refresh-token (aget resp 'refresh_token)))
 
 (defun grc-auth-request-refresh-token ()
+  "Make the request to Google to retrieve the refresh token"
   (grc-auth-verify-config)
   (let* ((auth-code (grc-auth-get-auth-code))
          (resp (grc-req-post-request
@@ -113,26 +121,31 @@
     (grc-auth-set-refresh-token resp)))
 
 (defun grc-auth-request-action-token ()
+  "Fetch the action token, this is the T attribute in many requests"
   `((token   . ,(grc-req-get-request
                  (concat grc-req-base-url "api/0/token")
                  nil nil t))
     (expires . ,(seconds-to-time (+ (* 60 25) (float-time))))))
 
 (defun grc-auth-set-action-token ()
+  "Cache the token from the action token alist"
   (setq grc-auth-action-token (grc-auth-request-action-token)))
 
 (defun grc-auth-get-action-token ()
+  "Return or refresh (based on the expiry timestamp) the action token"
   (when (or (null grc-auth-action-token)
             (time-less-p (aget grc-auth-action-token 'expires) (current-time)))
     (grc-auth-set-action-token))
   (aget grc-auth-action-token 'token t))
 
 (defun grc-auth-get-refresh-token ()
+  "Return the refresh token from the file or fetch it if the file doesn't exist"
   (or grc-auth-refresh-token
       (grc-auth-restore-refresh-token)
       (grc-auth-request-refresh-token)))
 
 (defun grc-auth-re-authenticate ()
+  "Get the refresh and access tokens as needed based on expiry"
   (let ((refresh-token (grc-auth-get-refresh-token)))
     ;; on first call, get-refresh-token will set everything
     (if (and grc-auth-access-token
@@ -149,12 +162,14 @@
         t)))))
 
 (defun grc-auth-ensure-authenticated ()
+  "Make sure that all of the tokens are available for requests"
   (if (or (null grc-auth-access-token)
           (time-less-p (aget grc-auth-access-token 'expires) (current-time)))
       (grc-auth-re-authenticate)
     grc-auth-access-token))
 
 (defun grc-auth-logout ()
+  "Scrub the cached variables and delete the refresh token from disk"
   (when (file-exists-p grc-auth-refresh-token-file)
     (delete-file grc-auth-refresh-token-file))
   (setq grc-auth-access-token nil)

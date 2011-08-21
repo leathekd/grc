@@ -72,6 +72,7 @@
     (insert "\n")))
 
 (defun grc-list-display (entries)
+  "Display the given entries in the grc-list-buffer"
   (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((inhibit-read-only t))
       (grc-list-mode)
@@ -90,6 +91,7 @@
       (goto-char (point-min)))))
 
 (defun grc-list-incremental-display ()
+  "Fetch new entries and add them to the grc-list-buffer"
   (setq grc-entry-cache (append (grc-req-incremental-fetch) grc-entry-cache))
   (grc-list-refresh))
 
@@ -113,6 +115,7 @@
   (move-beginning-of-line nil))
 
 (defun grc-list-header-line ()
+  "Set the header line for the grc-list-buffer"
   (setq header-line-format
         (format "Google Reader Client -- Viewing: %s (%s) %s  Sort: %s %s"
                 (cdr (assoc grc-current-state
@@ -125,6 +128,7 @@
                     "Descending" "Ascending"))))
 
 (defun grc-list-refresh ()
+  "Refresh the list buffer and put the cursor back where you found it"
   (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((line (1- (line-number-at-pos))))
       (grc-list-display grc-entry-cache)
@@ -143,6 +147,8 @@
   (grc-list-refresh))
 
 (defun grc-list-mark-fn (tag)
+  "Returns a function that will add a category to the entry under the cursor,
+  refresh the list buffer, and move down one line"
   `(lambda (&optional remove)
      (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry) remove)
      (grc-list-next-entry)

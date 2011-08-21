@@ -94,10 +94,12 @@
   :type 'string)
 
 (defun grc-req-auth-header ()
+  "returns the auth header for use in curl requests"
   (format grc-auth-header-format
           (aget grc-auth-access-token 'token)))
 
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
+  "Makes the actual request via curl.  Handles both POST and GET."
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
                            "?client=" grc-req-client-name
@@ -128,11 +130,12 @@
                endpoint params command raw-resp)))))
 
 (defun grc-req-get-request (endpoint &optional params no-auth raw-response)
+  "Makes a GET request to Google"
   (grc-req-do-request "GET" endpoint params no-auth raw-response))
 
 (defun grc-req-post-request (endpoint params &optional no-auth raw-response)
+  "Makes a POST request to Google"
   (grc-req-do-request "POST" endpoint params no-auth raw-response))
-
 
 (defvar grc-req-stream-url-pattern
   "http://www.google.com/reader/api/0/stream/contents/%s")

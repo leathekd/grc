@@ -32,6 +32,7 @@
 
 ;;; Code:
 (defun grc-parse-get-categories (json-entry)
+  "Extract categories and labels from the json entry"
   (remove-if 'null
              (mapcar (lambda (c)
                        (let ((label-idx (string-match "/label/" c))
@@ -42,6 +43,7 @@
                      (aget json-entry 'categories))))
 
 (defun grc-parse-process-entry (json-entry)
+  "Extract all the fields grc needs from the json entry"
   `((id         . ,(aget json-entry 'id))
     (date       . ,(aget json-entry 'published))
     (crawl-date . ,(string-to-int (substring
@@ -62,6 +64,7 @@
     (comments   . ,(aget json-entry 'comments t))))
 
 (defun grc-parse-parse-response (root)
+  "Extract all the entries from the parsed json"
   (setq grc-raw-response root)
   (let ((entries (aget root 'items t)))
     (mapcar 'grc-parse-process-entry entries)))

@@ -64,6 +64,7 @@
             (- 65535 r) (- 65535 g) (- 65535 b))))
 
 (defun grc-highlight-color-for-word (word)
+  "Get the color to use for the given word"
   (let ((color (concat "#" (substring (md5 (downcase word)) 0 12))))
     (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
         ;; if too dark for background
@@ -74,6 +75,7 @@
         (grc-highlight-invert-color color)))))
 
 (defun grc-highlight-make-face (word)
+  "Create and cache a new face for the given word"
   (or (gethash word grc-highlight-face-table)
       (let ((color (grc-highlight-color-for-word word))
             (new-kw-face
@@ -83,6 +85,7 @@
         (puthash word new-kw-face grc-highlight-face-table))))
 
 (defun grc-highlight-keyword (kw)
+  "Search through the file highlighting the given keyword"
   (let ((case-fold-search nil))
     (goto-char (point-min))
     (while (search-forward kw nil t)
