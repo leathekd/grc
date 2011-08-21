@@ -356,6 +356,7 @@
       (message "Unable to view this entry"))))
 
 (defun grc-shared-p (entry)
+  "Returns true if the entry has been shared and may be commented on"
   (or (member "broadcast" (aget grc-current-entry 'categories))
       (member "broadcast-friends" (aget grc-current-entry 'categories))))
 

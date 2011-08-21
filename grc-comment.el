@@ -35,11 +35,13 @@
 (defvar grc-comment-callback-args nil)
 
 (defun grc-comment-commit ()
+  "Call the callback function with the contents of the comment buffer"
   (interactive)
   (apply grc-comment-callback-fn (buffer-string) grc-comment-callback-args)
   (grc-comment-cancel))
 
 (defun grc-comment-cancel ()
+  "Kill the comment buffer and do not call the callback function"
   (interactive)
   (kill-buffer grc-comment-buffer))
 
@@ -52,7 +54,7 @@
 (fset 'grc-comment-mode-map grc-comment-mode-map)
 
 (defun grc-comment-mode ()
-  ""
+  "Major mode for grc comment entry buffers"
   (interactive)
   (kill-all-local-variables)
   (make-variable-buffer-local 'grc-comment-callback-fn)
@@ -64,6 +66,7 @@
         mode-name "grc-comment"))
 
 (defun grc-comment-open-buffer (cb-fn &rest cb-args)
+  "Open a comment buffer"
   (save-excursion
     (with-current-buffer (get-buffer-create grc-comment-buffer)
       (grc-comment-mode)

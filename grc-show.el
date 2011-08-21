@@ -49,6 +49,7 @@ list links at the bottom"
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
 (defun grc-show-print-comment (comment)
+  "Print a comment in the grc-show-buffer"
   (insert (format "%s - %s\n%s\n\n"
                   (aget comment 'author)
                   (format-time-string
@@ -58,6 +59,7 @@ list links at the bottom"
                       (aget comment 'plainContent)))))
 
 (defun grc-show-entry (entry)
+  "Print the given entry in the grc-show-buffer"
   (let ((buffer (get-buffer-create grc-show-buffer)))
     (with-current-buffer buffer
       (grc-show-mode)
