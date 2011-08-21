@@ -32,6 +32,9 @@
 ;;; Code:
 (require 'json)
 
+(defvar grc-req-client-name "grc-emacs-client"
+  "Arbitrary client string for various reqeuests")
+
 (defvar grc-auth-header-format
   "--header 'Authorization: OAuth %s'"
   "HTTP authorization headers to send.")
@@ -42,7 +45,7 @@
 
 (defvar grc-req-subscribed-feed-list-url
   (concat grc-req-base-url
-          "api/0/subscription/list?output=json")
+          "api/0/subscription/list")
   "URL for retrieving list of subscribed feeds.")
 
 (defvar grc-req-unread-count-url
@@ -52,7 +55,7 @@
 
 (defvar grc-req-preference-list-url
   (concat grc-req-base-url
-          "api/0/preference/list?&output=json")
+          "api/0/preference/list")
   "URL for retrieving preferences stored by Google Reader.
   For the most part, this is only used by the Google Reader UI,
   grc just gets and sets the last-allcomments-view pref.")
@@ -60,12 +63,22 @@
 (defvar grc-req-preference-set-url
   (concat grc-req-base-url
           "api/0/preference/set")
-  "URL for setting a preference in Google Reader.")
+  "URL for setting a preference")
 
 (defvar grc-req-edit-tag-url
   (concat grc-req-base-url
           "api/0/edit-tag")
-  "URL for setting a preference in Google Reader.")
+  "URL for editing a tag")
+
+(defvar grc-req-edit-item-url
+  (concat grc-req-base-url
+          "api/0/item/edit")
+  "URL for editing an entry")
+
+(defvar grc-req-edit-comment-url
+  (concat grc-req-base-url
+          "api/0/comment/edit")
+  "URL for adding/editing a comment")
 
 (defvar grc-req-last-fetch-time nil)
 
@@ -86,7 +99,11 @@
 
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
   (unless no-auth (grc-auth-ensure-authenticated))
-  (let* ((params (if (listp params) (grc-req-format-params params) params))
+  (let* ((endpoint (concat endpoint
+                           "?client=" grc-req-client-name
+                           "&ck=" (grc-string (floor (* 1000000 (float-time))))
+                           "&output=json"))
+         (params (if (listp params) (grc-req-format-params params) params))
          (command (format
                    "%s %s %s -X %s %s '%s' "
                    grc-curl-program
@@ -94,10 +111,10 @@
                    (if no-auth "" (grc-req-auth-header))
                    verb
                    (if (string= "POST" verb)
-                       (format "-d '%s'" params)
+                       (format "-d \"%s\"" params)
                      "")
                    (if (and (not (empty-string-p params)) (string= "GET" verb))
-                       (concat endpoint "?" params)
+                       (concat endpoint "&" params)
                      endpoint)))
          (raw-resp (shell-command-to-string command)))
     (cond
@@ -127,7 +144,7 @@
     (format grc-req-stream-url-pattern stream-state)))
 
 (defun grc-req-format-params (params)
-  (mapconcat (lambda (p) (concat (car p) "=" (cdr p)))
+  (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
              params "&"))
 
 (defun grc-req-incremental-fetch ()
@@ -158,28 +175,39 @@
                                   (floor (* 1000000 (float-time)))))
       resp)))
 
-(defun grc-req-edit-tag (id feed tag remove-p)
+(defun grc-req-edit-tag (id feed tag remove-p &optional extra-params)
   (grc-req-post-request
    grc-req-edit-tag-url
-   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s"
-           (if remove-p "r" "a") tag feed id (grc-auth-get-action-token))))
+   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s%s"
+           (if remove-p
+               "r"
+             "a")
+           tag feed id
+           (grc-auth-get-action-token)
+           (if extra-params
+               (concat "&" extra-params)
+             ""))))
+
+(defun grc-req-add-comment (entry-id src-id comment)
+  (let ((params `(("s"       . ,src-id)
+                  ("i"       . ,entry-id)
+                  ("T"       . ,(grc-string (grc-auth-get-action-token)))
+                  ("action"  . "addcomment")
+                  ("comment" . ,comment))))
+    (grc-req-post-request grc-req-edit-comment-url params)))
 
 (defun grc-req-friends ()
-  (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"
-                       "output=json"))
+  (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"))
 
 (defun grc-req-unread-comment-count ()
   (let* ((unread-counts
           (aget (grc-req-get-request
                  grc-req-unread-count-url
                  `(("n"           . ,(grc-string grc-fetch-count))
-                   ("output"      . "json")
-                   ("ck"          . ,(grc-string (floor (float-time))))
                    ("all"         . "true")
                    ("allcomments" . "true")
-                   ("sharers"     . ,(grc-req-sharers-hash))
-                   ("client"      . "emacs-grc-client")))
-                              'unreadcounts t))
+                   ("sharers"     . ,(grc-req-sharers-hash))))
+                'unreadcounts t))
          (unread-comments
           (first (remove-if-not (lambda (c)
                                   (string-match "broadcast-friends-comments"
@@ -209,6 +237,20 @@
                         `(("k" . ,(grc-string key))
                           ("v" . ,(grc-string val))
                           ("T" . ,(grc-string (grc-auth-get-action-token))))))
+
+(defun grc-req-share-with-comment (comment title snippet src-title src-url
+                                           entry-url)
+  (let ((params `(("share"      . "true")
+                  ("linkify"    . "true")
+                  ("T"          . ,(grc-string (grc-auth-get-action-token)))
+                  ("annotation" . ,comment)
+                  ("title"      . ,(aget entry 'title))
+                  ("snippet"    . ,(or (aget entry 'summary t)
+                                       (aget entry 'content t)))
+                  ("srcTitle"   . ,(aget entry 'src-title))
+                  ("srcUrl"     . ,(aget entry 'src-url))
+                  ("url"        . ,(aget entry 'link)))))
+    (grc-req-post-request grc-req-edit-item-url params)))
 
 (provide 'grc-req)
 ;;; grc-req.el ends here

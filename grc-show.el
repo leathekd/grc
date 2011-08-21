@@ -77,18 +77,18 @@ list links at the bottom"
                   ("Date"   ,(format-time-string
                               "%a %m/%d %l:%M %p"
                               (seconds-to-time (aget entry 'date))))
-                  ("Source" ,(aget entry 'source))
+                  ("Source" ,(aget entry 'src-title))
                   ("Next Story"
                    ,(if next-entry
-                        (grc-prepare-text (concat
-                                           (grc-title-for-printing next-entry)
-                                           " [" (aget next-entry 'source) "]"))
+                        (grc-prepare-text
+                         (concat (grc-title-for-printing next-entry)
+                                 " [" (aget next-entry 'src-title) "]"))
                       "None"))
                   ("Previous Story"
                    ,(if prev-entry
-                        (grc-prepare-text (concat
-                                           (grc-title-for-printing prev-entry)
-                                           " [" (aget prev-entry 'source) "]"))
+                        (grc-prepare-text
+                         (concat (grc-title-for-printing prev-entry)
+                                 " [" (aget prev-entry 'src-title) "]"))
                       "None"))))
 
         (let ((before (point)))
@@ -146,8 +146,17 @@ list links at the bottom"
 (defun grc-show-share (remove)
   "Share the current entry.  Use the prefix operator to un-share."
   (interactive "P")
-  (funcall (grc-mark-fn "broadcast") grc-current-entry remove)
+  (grc-share grc-current-entry remove)
   (grc-list-refresh))
+
+(defun grc-show-add-comment ()
+  "Comment on the current shared entry."
+  (interactive)
+  (if (grc-shared-p grc-current-entry)
+      (progn
+        (grc-add-comment grc-current-entry)
+        (grc-list-refresh))
+    (error "Not a shared entry")))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
@@ -218,6 +227,7 @@ list links at the bottom"
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map "c"               'grc-show-add-comment)
     (define-key map " "               'grc-show-advance-or-show-next-entry)
     (define-key map "?"               'grc-show-help)
     (define-key map "q"               'grc-show-kill-this-buffer)
@@ -247,6 +257,7 @@ list links at the bottom"
   n      View the next entry.
   *      Star the current entry.  Use the prefix operator to un-star.
   !      Share the current entry. Use the prefix operator to un-share.
+  c      Add a comment to the current (shared) entry.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.
   ?      Show the help message for the grc show view

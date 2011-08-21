@@ -40,6 +40,7 @@
 (require 'grc-req)
 (require 'grc-parse)
 (require 'grc-highlight)
+(require 'grc-comment)
 (require 'grc-list)
 (require 'grc-show)
 
@@ -220,7 +221,7 @@
 (defun grc-title-for-printing (entry)
   "Given an entry, extract a title"
   (let ((title (aget entry 'title t))
-        (streamId (aget entry 'feed))
+        (streamId (aget entry 'src-id))
         (summary (or (aget entry 'content t)
                      (aget entry 'summary t)))
         (case-fold-search t))
@@ -242,7 +243,7 @@
     (delete-dups
      (append categories
              (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'source t) 22 t)) entries)))))
+                             (aget e 'src-title t) 22 t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
@@ -312,7 +313,7 @@
     (setcar mem entry)
     entry))
 
-(defun grc-mark-fn (tag)
+(defun grc-mark-fn (tag &optional extra-params)
   `(lambda (entry &optional remove)
      (let ((mem (member ,tag (aget entry 'categories))))
        (cond
@@ -320,8 +321,8 @@
         ((and (null mem) remove) entry)
         (t (condition-case err
                (progn
-                 (grc-req-edit-tag (aget entry 'id) (aget entry 'feed) ,tag
-                                      remove)
+                 (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
+                                      remove ,extra-params)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
@@ -346,6 +347,38 @@
           (browse-url link)
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
+
+(defun grc-shared-p (entry)
+  (or (member "broadcast" (aget grc-current-entry 'categories))
+      (member "broadcast-friends" (aget grc-current-entry 'categories))))
+
+(defun grc-share (entry remove)
+  "Share the current entry.  Use the prefix operator to un-share."
+  (interactive "P")
+  (if (and (not remove)
+           (yes-or-no-p "Add comment?"))
+      (grc-comment-open-buffer
+       (lambda (comment entry)
+         (grc-req-share-with-comment comment
+                                     (aget entry 'title)
+                                     (or (aget entry 'summary t)
+                                         (aget entry 'content t))
+                                     (aget entry 'src-title)
+                                     (aget entry 'src-url)
+                                     (aget entry 'link))
+         (grc-list-refresh))
+       entry)
+    (funcall (grc-mark-fn "broadcast") entry remove))
+  (grc-list-refresh))
+
+(defun grc-add-comment (entry)
+  "Add a comment to the current entry"
+  (interactive "P")
+  (grc-comment-open-buffer
+   (lambda (comment entry)
+     (grc-req-add-comment (aget entry 'id) (aget entry 'src-id) comment)
+     (grc-list-refresh))
+   entry))
 
 (provide 'grc)
 ;;; grc.el ends here
