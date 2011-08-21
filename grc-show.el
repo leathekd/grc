@@ -158,6 +158,10 @@ list links at the bottom"
         (grc-list-refresh))
     (error "Not a shared entry")))
 
+(defun grc-show-email-this ()
+  (interactive)
+  (grc-email-entry grc-current-entry))
+
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
   (interactive)

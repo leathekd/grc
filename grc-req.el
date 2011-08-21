@@ -80,6 +80,10 @@
           "api/0/comment/edit")
   "URL for adding/editing a comment")
 
+(defvar grc-req-email-entry-url
+  (concat grc-req-base-url
+          "email-this"))
+
 (defvar grc-req-last-fetch-time nil)
 
 (defcustom grc-curl-program "/usr/bin/curl"
@@ -124,7 +128,7 @@
         (json-read-from-string
          (decode-coding-string raw-resp 'utf-8))))
      ((string-match "^OK" raw-resp) "OK")
-     (t (error "Error: %s?%s\nFull command: %s\nResponse: %s"
+     (t (error "Error: URL: %s Params: %s\nFull command: %s\nResponse: %s"
                endpoint params command raw-resp)))))
 
 (defun grc-req-get-request (endpoint &optional params no-auth raw-response)
@@ -251,6 +255,15 @@
                   ("srcUrl"     . ,(aget entry 'src-url))
                   ("url"        . ,(aget entry 'link)))))
     (grc-req-post-request grc-req-edit-item-url params)))
+
+(defun grc-req-email-this (entry-id to subject comment cc-me)
+  (let ((params `(("i"       . ,entry-id)
+                  ("subject" . ,subject)
+                  ("comment" . ,comment)
+                  ("emailTo" . ,to)
+                  ("ccMe"    . ,(if cc-me "true" "false"))
+                  ("T"       . ,(grc-string (grc-auth-get-action-token))))))
+    (grc-req-post-request grc-req-email-entry-url params)))
 
 (provide 'grc-req)
 ;;; grc-req.el ends here

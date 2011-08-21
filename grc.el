@@ -243,7 +243,7 @@
     (delete-dups
      (append categories
              (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'src-title t) 22 t)) entries)))))
+                                  (aget e 'src-title t) 22 t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
@@ -322,7 +322,7 @@
         (t (condition-case err
                (progn
                  (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
-                                      remove ,extra-params)
+                                   remove ,extra-params)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
@@ -379,6 +379,14 @@
      (grc-req-add-comment (aget entry 'id) (aget entry 'src-id) comment)
      (grc-list-refresh))
    entry))
+
+(defun grc-email-entry (entry)
+  (let ((to (read-from-minibuffer "To: "))
+        (subject (read-from-minibuffer "Subject: "
+                                       `(,(aget entry 'title t) . 0)))
+        (comment (read-from-minibuffer "Comment: "))
+        (cc-me (y-or-n-p "CC Yourself: ")))
+    (grc-req-email-this (aget entry 'id) to subject comment cc-me)))
 
 (provide 'grc)
 ;;; grc.el ends here
