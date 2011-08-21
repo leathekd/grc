@@ -381,6 +381,7 @@
    entry))
 
 (defun grc-email-entry (entry)
+  "Email the given entry"
   (let ((to (read-from-minibuffer "To: "))
         (subject (read-from-minibuffer "Subject: "
                                        `(,(aget entry 'title t) . 0)))

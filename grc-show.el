@@ -159,6 +159,7 @@ list links at the bottom"
     (error "Not a shared entry")))
 
 (defun grc-show-email-this ()
+  "Email the current entry"
   (interactive)
   (grc-email-entry grc-current-entry))
 

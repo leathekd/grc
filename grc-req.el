@@ -257,6 +257,7 @@
     (grc-req-post-request grc-req-edit-item-url params)))
 
 (defun grc-req-email-this (entry-id to subject comment cc-me)
+  "Send the actual email request"
   (let ((params `(("i"       . ,entry-id)
                   ("subject" . ,subject)
                   ("comment" . ,comment)
