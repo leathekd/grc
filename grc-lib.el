@@ -65,6 +65,21 @@
                        (aget a k)) seq :initial-value alist)))
     (or val not-found)))
 
+(defun grc-sort-fn (a b)
+  "Returns a sort function based on the type of the arguments"
+  (cond ((and (numberp a) (numberp b))
+         (lambda (x y)
+           (cond ((> x y) nil)
+                 ((< x y) t)
+                 (t 'equal))))
+        ((and (stringp a) (stringp b))
+         (lambda (x y)
+           (cond ((string> x y) nil)
+                 ((string< x y) t)
+                 (t 'equal))))
+        (t (error "Can't sort: %s (%s), %s (%s)"
+                  a (type-of a) b (type-of b)))))
+
 (defun grc-sort-by (key entries &optional reverse-result secondary-key)
   "Sort a list of alists by a particular key.  Note that this converts alist
   values to strings before sorting.
@@ -73,22 +88,19 @@
   secondary-key can be used to specify another field in the alist to sort by in
   the case that two values are identical for the primary sort.  The order is
   random in that case, otherwise."
-  (let* ((sorted (sort (copy-alist entries)
-                       (lambda (a b)
-                         (let ((result (compare-strings
-                                        (grc-string (aget a key)) 0 nil
-                                        (grc-string (aget b key)) 0 nil t)))
-                           (cond
-                            ((and secondary-key
-                                  (eq result t))
-                             (string<
-                              (downcase (grc-string (aget a secondary-key)))
-                              (downcase (grc-string (aget b secondary-key)))))
-                            ((> result 0) nil)
-                            ((< result 0) t)
-                            (t nil))))))
-         (sorted (if reverse-result (reverse sorted) sorted)))
-    sorted))
+  (let ((sorted
+         (sort (copy-alist entries)
+               (lambda (x y)
+                 (let* ((a (aget x key))
+                        (b (aget y key))
+                        (r (funcall (grc-sort-fn a b) a b))
+                        (r (if (and secondary-key (equal r 'equal))
+                               (let* ((a2 (aget x secondary-key))
+                                      (b2 (aget y secondary-key)))
+                                 (funcall (grc-sort-fn a2 b2) a2 b2))
+                             r)))
+                   (if (equal r 'equal) nil r))))))
+    (if reverse-result (reverse sorted) sorted)))
 
 (defun grc-group-by (key entries)
   "Partition a list of alists based on the specified key.  Returns an alist
