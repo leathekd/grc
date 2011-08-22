@@ -101,12 +101,11 @@
   (let* ((auth-code (grc-auth-get-auth-code))
          (resp (grc-req-post-request
                 "https://accounts.google.com/o/oauth2/token"
-                (grc-req-format-params
-                 `(("client_id"     . ,grc-auth-client-id)
-                   ("client_secret" . ,grc-auth-client-secret)
-                   ("code"          . ,auth-code)
-                   ("redirect_uri"  . "urn:ietf:wg:oauth:2.0:oob&")
-                   ("grant_type"    . "authorization_code")))
+                `(("client_id"     . ,grc-auth-client-id)
+                  ("client_secret" . ,grc-auth-client-secret)
+                  ("code"          . ,auth-code)
+                  ("redirect_uri"  . "urn:ietf:wg:oauth:2.0:oob")
+                  ("grant_type"    . "authorization_code"))
                 t)))
     ;; TODO: handle errors
     (grc-auth-set-access-token resp)
