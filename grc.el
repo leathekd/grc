@@ -104,22 +104,34 @@
   (while (search-forward-regexp regexp nil t)
     (replace-match to-string nil t)))
 
+(defun grc-convert-entities ()
+  "Searches through the buffer replacing common HTML entities with their chars"
+  (mapcar '(lambda (pair)
+             (goto-char (point-min))
+             (grc-replace-string (car pair) (cadr pair)))
+          grc-html-entity-list))
+
+(defun grc-trim-left-in-buffer ()
+  "Removes all leading whitespace from all lines in the buffer"
+  (goto-char (point-min))
+  (while (not (eobp))
+    (beginning-of-line)
+    (delete-horizontal-space)
+    (forward-line 1)))
+
+(defun grc-normalize-newlines ()
+  "Reduces multiple blank lines down to one"
+  (goto-char (point-min))
+  (grc-replace-regexp "^\n+" "\n"))
+
 (defun grc-strip-html ()
   "Converts some HTML entities and removes HTML tags."
   (save-excursion
-    (mapcar '(lambda (pair)
-               (goto-char 1)
-               (grc-replace-string (car pair) (cadr pair)))
-            grc-html-entity-list)
-    (goto-char 1)
+    (grc-convert-entities)
+    (goto-char (point-min))
     (grc-replace-regexp "<.*?>" "")
-    (goto-char 1)
-    (while (not (eobp))
-      (beginning-of-line)
-      (delete-horizontal-space)
-      (forward-line 1))
-    (goto-char 1)
-    (grc-replace-regexp "^\n+" "\n")))
+    (grc-trim-left-in-buffer)
+    (grc-normalize-newlines)))
 
 (defun grc-footnote-anchors (&optional use-annotations links)
   "Walks through a buffer of html and removes the anchor tags,
@@ -243,7 +255,7 @@
     (delete-dups
      (append categories
              (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'src-title t) 22 t)) entries)))))
+                                  (aget e 'src-title t) 22 t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
@@ -326,7 +338,7 @@
         (t (condition-case err
                (progn
                  (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
-                                      remove ,extra-params)
+                                   remove ,extra-params)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
