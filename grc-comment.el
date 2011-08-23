@@ -69,7 +69,7 @@
       (grc-comment-mode)
       (setq grc-comment-callback-fn cb-fn)
       (setq grc-comment-callback-args cb-args)
-      (switch-to-buffer grc-comment-buffer))))
+      (pop-to-buffer grc-comment-buffer))))
 
 (provide 'grc-comment)
 ;;; grc-comment.el ends here
