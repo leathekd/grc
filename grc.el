@@ -124,6 +124,9 @@
   (goto-char (point-min))
   (grc-replace-regexp "^\n+" "\n"))
 
+;; TODO: this is doing more than just stripping html, should it be
+;; refactored to just strip html and move the entities, trimming, and
+;; normalizing to some other function?
 (defun grc-strip-html ()
   "Converts some HTML entities and removes HTML tags."
   (save-excursion
@@ -132,6 +135,13 @@
     (grc-replace-regexp "<.*?>" "")
     (grc-trim-left-in-buffer)
     (grc-normalize-newlines)))
+
+(defun grc-strip-html-to-string (str)
+  "Takes a string and returns it stripped of HTML"
+  (with-temp-buffer
+    (insert text)
+    (grc-strip-html)
+    (buffer-substring (point-min) (point-max))))
 
 (defun grc-footnote-anchors (&optional use-annotations links)
   "Walks through a buffer of html and removes the anchor tags,
@@ -147,6 +157,8 @@
              (attrs (html2text-get-attr p1 p2))
              (href (html2text-attr-value attrs "href"))
              (text (buffer-substring-no-properties p2 (- p3 4)))
+             ;; TODO: replace with strip-html-to-text after tests are
+             ;; in place
              (text (with-temp-buffer
                      (insert text)
                      (grc-strip-html)
