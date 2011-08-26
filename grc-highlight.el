@@ -1,7 +1,6 @@
 ;;; grc-lib.el --- Google Reader Mode for Emacs
 ;;
-;; Copyright (C) 2007  André Riemann
-;; Copyright (C) 2008  Andy Stewart
+;; Copyright (C) 2011  David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
 ;; URL: http://www.github.com/leathekd/google-reader-client
@@ -13,7 +12,7 @@
 
 ;; This file was originally erc-highlight-nicknames.  It was modified
 ;; to take a list of keywords to highlight as well as to save the new
-;; faces in a grc specific variable.
+;; faces in a grc specific variable.  Loads of refactoring, too.
 
 ;;; License:
 
@@ -86,13 +85,11 @@
   (let ((case-fold-search nil))
     (goto-char (point-min))
     (while (search-forward kw nil t)
-      (let ((start (point))
-            (end (- (point) (length kw)))
-            (word ))
+      (let ((start (- (point) (length kw)))
+            (end (point)))
         (put-text-property start end
                            'face
-                           (grc-highlight-make-face
-                            (buffer-substring-no-properties start end)))))))
+                           (grc-highlight-make-face kw))))))
 
 (defun grc-highlight-keywords (keywords)
   "Searches for nicknames and highlights them. Uses the first
