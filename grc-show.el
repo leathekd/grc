@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
