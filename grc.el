@@ -263,8 +263,11 @@
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
                             grc-current-state))
-  (grc-list-display (grc-req-remote-entries grc-current-state))
-  (switch-to-buffer grc-list-buffer))
+  (grc-req-remote-entries
+   (lambda (resp)
+     (grc-list-display resp)
+     (switch-to-buffer grc-list-buffer))
+   grc-current-state))
 
 ;;;###autoload
 (defun grc-logout ()

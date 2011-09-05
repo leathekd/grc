@@ -205,13 +205,13 @@
   (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
              params "&"))
 
-(defun grc-req-incremental-fetch ()
+(defun grc-req-incremental-fetch (cb-fn)
   (when (string= grc-current-state "reading-list")
-    (grc-req-remote-entries grc-current-state grc-req-last-fetch-time)))
+    (grc-req-remote-entries cb-fn grc-current-state grc-req-last-fetch-time)))
 
 ;; TODO: Need to factor out the state specific voodoo into something
 ;; less kludgy
-(defun grc-req-remote-entries (&optional state since)
+(defun grc-req-remote-entries (cb-fn &optional state since)
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
                   ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
@@ -225,13 +225,13 @@
       (aput 'params "r" "c")))
     (when since
       (aput 'params "ot" (prin1-to-string since)))
-    (let ((resp (grc-parse-parse-response
-                 (grc-req-get-request (grc-req-stream-url state)
-                                      (grc-req-format-params params)))))
-      (if (string= state "broadcast-friends-comments")
-          (grc-req-set-preference "last-allcomments-view"
-                                  (floor (* 1000000 (float-time)))))
-      resp)))
+    (grc-req-async-get-request
+     cb-fn
+     (grc-req-stream-url state)
+     (grc-req-format-params params))
+    (if (string= state "broadcast-friends-comments")
+        (grc-req-set-preference "last-allcomments-view"
+                                (floor (* 1000000 (float-time)))))))
 
 (defun grc-req-edit-tag (id feed tag remove-p &optional extra-params)
   (grc-req-post-request
