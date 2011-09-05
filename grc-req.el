@@ -97,6 +97,64 @@
   (format grc-auth-header-format
           (aget grc-auth-access-token 'token)))
 
+(defvar grc-req-async-cb-fns (make-hash-table :test 'equal))
+(defvar grc-req-async-responses (make-hash-table :test 'equal))
+
+(defun grc-req-process-sentinel (process event)
+  (when (string-match "^finished" event)
+    (let ((raw-resp (gethash process grc-req-async-responses)))
+      (funcall
+       (gethash process grc-req-async-cb-fns)
+       (let ((raw-resp
+              (cond ((string-match "^{" raw-resp)
+                     (let ((json-array-type 'list))
+                       (json-read-from-string
+                        (decode-coding-string raw-resp 'utf-8))))
+                    (t (error "Error in async request. Cmd: %s\nResponse: %s"
+                              (process-command process) raw-resp)))))
+         (grc-parse-parse-response raw-resp))))
+    (remhash process grc-req-async-cb-fns)))
+
+(defun grc-req-process-filter (process string)
+  (let ((resp (gethash process grc-req-async-responses "")))
+    (puthash process (concat resp string) grc-req-async-responses)))
+
+(defun grc-req-do-async-request (cb-fn verb endpoint
+                                       &optional params no-auth raw-response)
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (let* ((endpoint (concat endpoint
+                           "?client=" grc-req-client-name
+                           "&ck=" (grc-string (floor (* 1000000 (float-time))))
+                           "&output=json"))
+         (params (if (listp params) (grc-req-format-params params) params))
+         (process (start-process "grc request"
+                                 nil
+                                 grc-curl-program
+                                 "--compressed"
+                                 "--silent" "--location" "--location-trusted"
+                                 "--header"
+                                 (format "Authorization: OAuth %s"
+                                         (aget grc-auth-access-token 'token))
+                                 verb
+                                 (if (string= "POST" verb)
+                                     (format "-d \"%s\"" params)
+                                   "")
+                                 (if (and (not (equal "" params))
+                                          (string= "GET" verb))
+                                     (concat endpoint "&" params)
+                                   endpoint))))
+    (puthash process cb-fn grc-req-async-cb-fns)
+    (set-process-filter process 'grc-req-process-filter)
+    (set-process-sentinel process 'grc-req-process-sentinel)))
+
+(defun grc-req-async-get-request (cb-fn endpoint
+                                        &optional params no-auth raw-response)
+  (grc-req-do-async-request cb-fn "GET" endpoint params no-auth raw-response))
+
+(defun grc-req-async-post-request (cb-fn endpoint params
+                                         &optional no-auth raw-response)
+  (grc-req-do-async-request cb-fn "POST" endpoint params no-auth raw-response))
+
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
