@@ -191,7 +191,6 @@
 (defun grc-req-post-request (endpoint params &optional no-auth raw-response)
   (grc-req-do-request "POST" endpoint params no-auth raw-response))
 
-
 (defvar grc-req-stream-url-pattern
   "http://www.google.com/reader/api/0/stream/contents/%s")
 
