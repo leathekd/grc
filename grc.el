@@ -139,7 +139,7 @@
                      (insert text)
                      (grc-strip-html)
                      (buffer-substring (point-min) (point-max)))))
-        (if (and text (not (empty-string-p (grc-trim text))))
+        (if (and text (not (equal "" (grc-trim text))))
             (progn
               (delete-region (- p1 2) p3)
               (insert text)

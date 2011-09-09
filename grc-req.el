@@ -113,7 +113,7 @@
                    (if (string= "POST" verb)
                        (format "-d \"%s\"" params)
                      "")
-                   (if (and (not (empty-string-p params)) (string= "GET" verb))
+                   (if (and (not (equal "" params)) (string= "GET" verb))
                        (concat endpoint "&" params)
                      endpoint)))
          (raw-resp (shell-command-to-string command)))

@@ -96,7 +96,7 @@
   twelve digits of the MD5 message digest of the nickname as
   color (#rrrrggggbbbb)."
   (let ((kw (car keywords)))
-    (when (and kw (not (empty-string-p kw)))
+    (when (and kw (not (equal "" kw)))
       (grc-highlight-keyword kw)
       (grc-highlight-keywords (cdr keywords)))))
 
