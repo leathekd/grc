@@ -90,8 +90,10 @@
       (goto-char (point-min)))))
 
 (defun grc-list-incremental-display ()
-  (setq grc-entry-cache (append (grc-req-incremental-fetch) grc-entry-cache))
-  (grc-list-refresh))
+  (grc-req-incremental-fetch
+   (lambda (resp)
+     (setq grc-entry-cache (append resp grc-entry-cache))
+     (grc-list-refresh))))
 
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"

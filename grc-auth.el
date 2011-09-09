@@ -86,8 +86,9 @@
 (defun grc-auth-set-access-token (resp)
   (setq grc-auth-access-token
         `((token   . ,(aget resp 'access_token t))
-          (expires . ,(seconds-to-time (+ (aget resp 'expires_in)
-                                          (float-time)))))))
+          (expires . ,(- (+ (aget resp 'expires_in)
+                            (float-time))
+                         300)))))
 
 (defun grc-auth-get-access-token ()
   (aget grc-auth-access-token 'token))
@@ -115,14 +116,14 @@
   `((token   . ,(grc-req-get-request
                  (concat grc-req-base-url "api/0/token")
                  nil nil t))
-    (expires . ,(seconds-to-time (+ (* 60 25) (float-time))))))
+    (expires . ,(+ (* 60 25) (float-time)))))
 
 (defun grc-auth-set-action-token ()
   (setq grc-auth-action-token (grc-auth-request-action-token)))
 
 (defun grc-auth-get-action-token ()
   (when (or (null grc-auth-action-token)
-            (time-less-p (aget grc-auth-action-token 'expires) (current-time)))
+            (<= (aget grc-auth-action-token 'expires) (floor (float-time))))
     (grc-auth-set-action-token))
   (aget grc-auth-action-token 'token t))
 
@@ -135,7 +136,7 @@
   (let ((refresh-token (grc-auth-get-refresh-token)))
     ;; on first call, get-refresh-token will set everything
     (if (and grc-auth-access-token
-             (time-less-p (current-time) (aget grc-auth-access-token 'expires)))
+             (<= (floor (float-time)) (aget grc-auth-access-token 'expires)))
         grc-auth-access-token
       (grc-auth-set-access-token
        (grc-req-post-request
@@ -149,7 +150,8 @@
 
 (defun grc-auth-ensure-authenticated ()
   (if (or (null grc-auth-access-token)
-          (time-less-p (aget grc-auth-access-token 'expires) (current-time)))
+          (<= (floor (aget grc-auth-access-token 'expires))
+              (floor (float-time))))
       (grc-auth-re-authenticate)
     grc-auth-access-token))
 
