@@ -131,10 +131,16 @@ list links at the bottom"
   (interactive)
   (grc-help))
 
-(defun grc-show-mark-kept-unread (remove)
+(defun grc-show-mark-kept-unread ()
   "Mark the current entry as Keep Unread."
-  (interactive "P")
-  (funcall (grc-mark-fn "kept-unread") grc-current-entry remove)
+  (interactive)
+  (grc-mark-kept-unread grc-current-entry)
+  (grc-list-refresh))
+
+(defun grc-show-mark-read ()
+  "Mark the current entry as Read"
+  (interactive)
+  (grc-mark-read grc-current-entry)
   (grc-list-refresh))
 
 (defun grc-show-mark-starred (remove)
@@ -232,6 +238,7 @@ list links at the bottom"
     (define-key map "?"               'grc-show-help)
     (define-key map "q"               'grc-show-kill-this-buffer)
     (define-key map "k"               'grc-show-mark-kept-unread)
+    (define-key map "r"               'grc-show-mark-read)
     (define-key map "*"               'grc-show-mark-starred)
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
@@ -258,6 +265,7 @@ list links at the bottom"
   *      Star the current entry.  Use the prefix operator to un-star.
   !      Share the current entry. Use the prefix operator to un-share.
   c      Add a comment to the current (shared) entry.
+  r      Mark the current entry as Read.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.
   ?      Show the help message for the grc show view

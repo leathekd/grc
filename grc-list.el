@@ -150,22 +150,26 @@
      (grc-list-next-entry)
      (grc-list-refresh)))
 
-(defun grc-list-mark-read (remove)
+(defun grc-list-mark-read ()
   "Mark the current entry as Read.  Use the prefix operator to unmark."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "read") remove))
+  (interactive)
+  (grc-mark-read (grc-list-get-current-entry))
+  (grc-list-next-entry)
+  (grc-list-refresh))
 
 (defun grc-list-mark-read-and-remove ()
   "Mark the current entry as Read and remove it immediately from the list."
   (interactive)
-  (funcall (grc-mark-fn "read") (grc-list-get-current-entry))
+  (grc-mark-read (grc-list-get-current-entry))
   (setq grc-entry-cache (delete (grc-list-get-current-entry) grc-entry-cache))
   (grc-list-refresh))
 
-(defun grc-list-mark-kept-unread (remove)
+(defun grc-list-mark-kept-unread ()
   "Mark the current entry as Kept Unread.  Use the prefix operator to unmark."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "kept-unread") remove))
+  (interactive)
+  (grc-mark-kept-unread (grc-list-get-current-entry))
+  (grc-list-next-entry)
+  (grc-list-refresh))
 
 (defun grc-list-mark-starred (remove)
   "Star the current entry.  Use the prefix operator to un-star."
@@ -266,8 +270,8 @@
   *    Star the current entry.  Use the prefix operator to un-star.
   !    Share the current entry.  Use the prefix operator to un-share.
   x    Mark the current entry as Read and remove it immediately from the list.
-  r    Mark the current entry as Read.  Use the prefix operator to unmark.
-  k    Mark the current entry as Kept Unread.  Use the prefix operator to unmark
+  r    Mark the current entry as Read.
+  k    Mark the current entry as Kept Unread.
   ?    Show the help message for the grc list screen
   q    Kill the current buffer."
   (interactive)

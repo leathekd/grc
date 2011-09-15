@@ -232,18 +232,31 @@
         (grc-req-set-preference "last-allcomments-view"
                                 (floor (* 1000000 (float-time)))))))
 
-(defun grc-req-edit-tag (id feed tag remove-p &optional extra-params)
+(defun grc-req-mark-kept-unread (id feed)
   (grc-req-post-request
    grc-req-edit-tag-url
-   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s%s"
-           (if remove-p
-               "r"
-             "a")
-           tag feed id
-           (grc-auth-get-action-token)
-           (if extra-params
-               (concat "&" extra-params)
-             ""))))
+   `(("a" . "user/-/state/com.google/kept-unread")
+     ("r" . "user/-/state/com.google/read")
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
+
+(defun grc-req-mark-read (id feed)
+  (grc-req-post-request
+   grc-req-edit-tag-url
+   `(("r" . "user/-/state/com.google/kept-unread")
+     ("a" . "user/-/state/com.google/read")
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
+
+(defun grc-req-edit-tag (id feed tag remove-p)
+  (grc-req-post-request
+   grc-req-edit-tag-url
+   `((,(if remove-p "r" "a") . ,(concat "user/-/state/com.google/" tag))
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-add-comment (entry-id src-id comment)
   (let ((params `(("s"       . ,src-id)
