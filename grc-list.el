@@ -41,6 +41,8 @@
                  (symbol :tag "Source" 'src-title)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+(defvar grc-list-date-col-width 14)
+(defvar grc-list-source-col-width 23)
 
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
@@ -49,20 +51,24 @@
          (date (seconds-to-time (aget entry 'crawl-date t)))
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
-         (static-width (+ 14 2 23 2 2
+         (static-width (+ grc-list-date-col-width 2
+                          grc-list-source-col-width 2 2
                           (length cats)
                           (if (aget entry 'comments t) 4 0)
                           1))
          (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry))))
+         (title (grc-prepare-text (grc-title-for-printing entry)))
+         (row-format (format "%%-%ss  %%-%ss  %%s"
+                             grc-list-date-col-width
+                             grc-list-source-col-width)))
     (insert
-     (format "%-14s  %-23s  %s"
+     (format row-format
              (format-time-string
               (if (> one-week (float-time date))
                   "%m/%d %l:%M %p"
                 "  %a %l:%M %p")
               date)
-             (grc-truncate-text source 23 t)
+             (grc-truncate-text source grc-list-source-col-width t)
              (grc-truncate-text title title-width t)))
 
     (when (< 0 (length cats))
@@ -86,7 +92,10 @@
       (when (> 1 (point))
         (delete-backward-char 1))
 
-      (grc-highlight-keywords (grc-keywords entries))
+      (grc-highlight-keywords
+       (mapcar (lambda (e) (grc-truncate-text
+                       e grc-list-source-col-width t))
+               (grc-keywords entries)))
       (goto-char (point-min)))))
 
 (defun grc-list-incremental-display ()

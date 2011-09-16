@@ -63,14 +63,16 @@
             (- 65535 r) (- 65535 g) (- 65535 b))))
 
 (defun grc-highlight-color-for-word (word)
-  (let ((color (concat "#" (substring (md5 (downcase word)) 0 12))))
-    (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
-        ;; if too dark for background
-        (when (< (grc-highlight-hexcolor-luminance color) 85)
-          (grc-highlight-invert-color color))
-      ;; if too bright for background
-      (when (> (grc-highlight-hexcolor-luminance color) 170)
-        (grc-highlight-invert-color color)))))
+  (let ((color (concat "#" (substring (md5 (downcase word)) 0 12)))
+        (bg-mode (cdr (assoc 'background-mode (frame-parameters)))))
+    (cond
+     ((and (equal 'dark bg-mode)
+           (< (grc-highlight-hexcolor-luminance color) 85))
+      (grc-highlight-invert-color color))
+     ((and (equal 'light bg-mode)
+           (> (grc-highlight-hexcolor-luminance color) 170))
+      (grc-highlight-invert-color color))
+     (t color))))
 
 (defun grc-highlight-make-face (word)
   (or (gethash word grc-highlight-face-table)

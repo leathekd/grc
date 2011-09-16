@@ -242,8 +242,7 @@
                                        entries))))))
     (delete-dups
      (append categories
-             (mapcar (lambda (e) (grc-truncate-text
-                             (aget e 'src-title t) 22 t)) entries)))))
+             (mapcar (lambda (e) (aget e 'src-title t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
