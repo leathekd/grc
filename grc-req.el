@@ -88,7 +88,8 @@
   :type 'string)
 
 (defcustom grc-curl-options
-  "--compressed --silent --location --location-trusted"
+  (concat "--compressed --silent --location --location-trusted "
+          "--connect-timeout 2 --max-time 5 --retry 2")
   "Options to pass to all grc curl requests"
   :group 'grc
   :type 'string)
@@ -110,8 +111,11 @@
                      (let ((json-array-type 'list))
                        (json-read-from-string
                         (decode-coding-string raw-resp 'utf-8))))
-                    (t (error "Error in async request. Cmd: %s\nResponse: %s"
-                              (process-command process) raw-resp)))))
+                    ((string= "" raw-resp)
+                     (error "Error during async grc request."))
+                    (t
+                     (error "Error in grc async request. Cmd: %s\nResponse: %s"
+                            (process-command process) raw-resp)))))
          (grc-parse-parse-response raw-resp))))
     (remhash process grc-req-async-cb-fns)))
 
@@ -182,6 +186,7 @@
         (json-read-from-string
          (decode-coding-string raw-resp 'utf-8))))
      ((string-match "^OK" raw-resp) "OK")
+     ((string= "" raw-resp) (error "Error during grc request."))
      (t (error "Error: %s?%s\nFull command: %s\nResponse: %s"
                endpoint params command raw-resp)))))
 
