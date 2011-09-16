@@ -331,15 +331,31 @@
              (error (message "There was a problem marking the entry as read: %s"
                              err))))))))
 
-;; TODO: optimize? if it has read and not kept-unread, don't call network
 (defun grc-mark-read (entry)
-  (grc-req-mark-read (aget entry 'id) (aget entry 'src-id))
-  (grc-add-category (grc-remove-category entry "kept-unread") "read"))
+  (let* ((cats (aget entry 'categories))
+         (read (member "read" cats))
+         (kept-unread (member "kept-unread" cats)))
+    (if (not read)
+        (progn
+          (grc-req-mark-read (aget entry 'id) (aget entry 'src-id))
+          (let ((entry (grc-add-category entry "read")))
+            (if kept-unread
+                (grc-remove-category entry "kept-unread")
+              entry)))
+      entry)))
 
-;; TODO: optimize? if it has kept-unread and not read, don't call network
 (defun grc-mark-kept-unread (entry)
-  (grc-req-mark-kept-unread (aget entry 'id) (aget entry 'src-id))
-  (grc-add-category (grc-remove-category entry "read") "kept-unread"))
+  (let* ((cats (aget entry 'categories))
+         (read (member "read" cats))
+         (kept-unread (member "kept-unread" cats)))
+    (if (not kept-unread)
+        (progn
+          (grc-req-mark-kept-unread (aget entry 'id) (aget entry 'src-id))
+          (let ((entry (grc-add-category entry "kept-unread")))
+            (if read
+                (grc-remove-category entry "read")
+              entry)))
+      entry)))
 
 (defun grc-mark-starred (entry &optional remove)
   (funcall (grc-mark-fn "starred") entry remove))

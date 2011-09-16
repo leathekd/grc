@@ -134,13 +134,13 @@ list links at the bottom"
 (defun grc-show-mark-kept-unread ()
   "Mark the current entry as Keep Unread."
   (interactive)
-  (grc-mark-kept-unread grc-current-entry)
+  (setq grc-current-entry (grc-mark-kept-unread grc-current-entry))
   (grc-list-refresh))
 
 (defun grc-show-mark-read ()
   "Mark the current entry as Read"
   (interactive)
-  (grc-mark-read grc-current-entry)
+  (setq grc-current-entry (grc-mark-read grc-current-entry))
   (grc-list-refresh))
 
 (defun grc-show-mark-starred (remove)
