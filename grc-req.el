@@ -103,6 +103,8 @@
 (defvar grc-req-async-responses (make-hash-table :test 'equal))
 
 (defun grc-req-process-sentinel (process event)
+  "Parses the gathered response and calls the cb-fn with the result when the
+  process is done"
   (when (string-match "^finished" event)
     (let ((raw-resp (gethash process grc-req-async-responses)))
       (funcall
@@ -121,11 +123,13 @@
     (remhash process grc-req-async-cb-fns)))
 
 (defun grc-req-process-filter (process string)
+  "Gathers up the raw response from the request"
   (let ((resp (gethash process grc-req-async-responses "")))
     (puthash process (concat resp string) grc-req-async-responses)))
 
 (defun grc-req-do-async-request (cb-fn verb endpoint
                                        &optional params no-auth raw-response)
+  "Makes the actual async request via curl.  Handles both POST and GET."
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
                            "?client=" grc-req-client-name
@@ -154,10 +158,14 @@
 
 (defun grc-req-async-get-request (cb-fn endpoint
                                         &optional params no-auth raw-response)
+  "Makes an async request GET to Google.  Takes a callback function that will be
+  called with the parsed response"
   (grc-req-do-async-request cb-fn "GET" endpoint params no-auth raw-response))
 
 (defun grc-req-async-post-request (cb-fn endpoint params
                                          &optional no-auth raw-response)
+  "Makes an async request POST to Google.  Takes a callback function that will
+  be called with the parsed response"
   (grc-req-do-async-request cb-fn "POST" endpoint params no-auth raw-response))
 
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
@@ -248,6 +256,8 @@
                                 (floor (* 1000000 (float-time)))))))
 
 (defun grc-req-mark-kept-unread (id feed)
+  "Send a request to mark an entry as kept-unread.  Will also remove the read
+  category"
   (grc-req-post-request
    grc-req-edit-tag-url
    `(("a" . "user/-/state/com.google/kept-unread")
@@ -257,6 +267,8 @@
      ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-mark-read (id feed)
+  "Send a request to mark an entry as read.  Will also remove the kept-unread
+  category"
   (grc-req-post-request
    grc-req-edit-tag-url
    `(("r" . "user/-/state/com.google/kept-unread")

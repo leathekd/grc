@@ -50,6 +50,8 @@
     (prin1-to-string thing t)))
 
 (defun grc-any-p (pred lst)
+  "Applies pred to each item in lst, returning the first for which pred returns
+  true or nil."
   (member* nil
            lst
            :test `(lambda (_ a) (,pred a))))
