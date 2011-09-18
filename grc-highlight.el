@@ -1,10 +1,9 @@
 ;;; grc-lib.el --- Google Reader Mode for Emacs
 ;;
-;; Copyright (C) 2007  André Riemann
-;; Copyright (C) 2008  Andy Stewart
+;; Copyright (C) 2011  David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -13,7 +12,7 @@
 
 ;; This file was originally erc-highlight-nicknames.  It was modified
 ;; to take a list of keywords to highlight as well as to save the new
-;; faces in a grc specific variable.
+;; faces in a grc specific variable.  Loads of refactoring, too.
 
 ;;; License:
 
@@ -65,14 +64,16 @@
 
 (defun grc-highlight-color-for-word (word)
   "Get the color to use for the given word"
-  (let ((color (concat "#" (substring (md5 (downcase word)) 0 12))))
-    (if (equal (cdr (assoc 'background-mode (frame-parameters))) 'dark)
-        ;; if too dark for background
-        (when (< (grc-highlight-hexcolor-luminance color) 85)
-          (grc-highlight-invert-color color))
-      ;; if too bright for background
-      (when (> (grc-highlight-hexcolor-luminance color) 170)
-        (grc-highlight-invert-color color)))))
+  (let ((color (concat "#" (substring (md5 (downcase word)) 0 12)))
+        (bg-mode (cdr (assoc 'background-mode (frame-parameters)))))
+    (cond
+     ((and (equal 'dark bg-mode)
+           (< (grc-highlight-hexcolor-luminance color) 85))
+      (grc-highlight-invert-color color))
+     ((and (equal 'light bg-mode)
+           (> (grc-highlight-hexcolor-luminance color) 170))
+      (grc-highlight-invert-color color))
+     (t color))))
 
 (defun grc-highlight-make-face (word)
   "Create and cache a new face for the given word"
@@ -89,20 +90,18 @@
   (let ((case-fold-search nil))
     (goto-char (point-min))
     (while (search-forward kw nil t)
-      (let ((start (point))
-            (end (- (point) (length kw)))
-            (word ))
+      (let ((start (- (point) (length kw)))
+            (end (point)))
         (put-text-property start end
                            'face
-                           (grc-highlight-make-face
-                            (buffer-substring-no-properties start end)))))))
+                           (grc-highlight-make-face kw))))))
 
 (defun grc-highlight-keywords (keywords)
   "Searches for nicknames and highlights them. Uses the first
   twelve digits of the MD5 message digest of the nickname as
   color (#rrrrggggbbbb)."
   (let ((kw (car keywords)))
-    (when (and kw (not (empty-string-p kw)))
+    (when (and kw (not (equal "" kw)))
       (grc-highlight-keyword kw)
       (grc-highlight-keywords (cdr keywords)))))
 

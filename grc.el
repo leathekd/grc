@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -163,7 +163,7 @@
                      (insert text)
                      (grc-strip-html)
                      (buffer-substring (point-min) (point-max)))))
-        (if (and text (not (empty-string-p (grc-trim text))))
+        (if (and text (not (equal "" (grc-trim text))))
             (progn
               (delete-region (- p1 2) p3)
               (insert text)
@@ -266,8 +266,7 @@
                                        entries))))))
     (delete-dups
      (append categories
-             (mapcar (lambda (e) (grc-truncate-text
-                                  (aget e 'src-title t) 22 t)) entries)))))
+             (mapcar (lambda (e) (aget e 'src-title t)) entries)))))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
@@ -287,8 +286,11 @@
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
                             grc-current-state))
-  (grc-list-display (grc-req-remote-entries grc-current-state))
-  (switch-to-buffer grc-list-buffer))
+  (grc-req-remote-entries
+   (lambda (resp)
+     (grc-list-display resp)
+     (switch-to-buffer grc-list-buffer))
+   grc-current-state))
 
 ;;;###autoload
 (defun grc-logout ()
@@ -339,7 +341,7 @@
     (setcar mem entry)
     entry))
 
-(defun grc-mark-fn (tag &optional extra-params)
+(defun grc-mark-fn (tag)
   "Returns a function that will add/remove a category from an entry.
   This function will make a remote call."
   `(lambda (entry &optional remove)
@@ -350,7 +352,7 @@
         (t (condition-case err
                (progn
                  (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
-                                   remove ,extra-params)
+                                   remove)
                  (if (null remove)
                      (grc-add-category entry ,tag)
                    (grc-remove-category entry ,tag)))
@@ -359,11 +361,31 @@
 
 (defun grc-mark-read (entry)
   "Marks the entry as read on Google Reader"
-  (funcall (grc-mark-fn "read") entry nil))
+  (let* ((cats (aget entry 'categories))
+         (read (member "read" cats))
+         (kept-unread (member "kept-unread" cats)))
+    (if (not read)
+        (progn
+          (grc-req-mark-read (aget entry 'id) (aget entry 'src-id))
+          (let ((entry (grc-add-category entry "read")))
+            (if kept-unread
+                (grc-remove-category entry "kept-unread")
+              entry)))
+      entry)))
 
 (defun grc-mark-kept-unread (entry)
   "Marks the entry as kept unread on Google Reader"
-  (funcall (grc-mark-fn "kept-unread") entry nil))
+  (let* ((cats (aget entry 'categories))
+         (read (member "read" cats))
+         (kept-unread (member "kept-unread" cats)))
+    (if (not kept-unread)
+        (progn
+          (grc-req-mark-kept-unread (aget entry 'id) (aget entry 'src-id))
+          (let ((entry (grc-add-category entry "kept-unread")))
+            (if read
+                (grc-remove-category entry "read")
+              entry)))
+      entry)))
 
 (defun grc-mark-starred (entry &optional remove)
   "Marks the entry as starred on Google Reader"

@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -88,7 +88,8 @@
   :type 'string)
 
 (defcustom grc-curl-options
-  "--compressed --silent --location --location-trusted"
+  (concat "--compressed --silent --location --location-trusted "
+          "--connect-timeout 2 --max-time 5 --retry 2")
   "Options to pass to all grc curl requests"
   :group 'grc
   :type 'string)
@@ -97,6 +98,67 @@
   "returns the auth header for use in curl requests"
   (format grc-auth-header-format
           (aget grc-auth-access-token 'token)))
+
+(defvar grc-req-async-cb-fns (make-hash-table :test 'equal))
+(defvar grc-req-async-responses (make-hash-table :test 'equal))
+
+(defun grc-req-process-sentinel (process event)
+  (when (string-match "^finished" event)
+    (let ((raw-resp (gethash process grc-req-async-responses)))
+      (funcall
+       (gethash process grc-req-async-cb-fns)
+       (let ((raw-resp
+              (cond ((string-match "^{" raw-resp)
+                     (let ((json-array-type 'list))
+                       (json-read-from-string
+                        (decode-coding-string raw-resp 'utf-8))))
+                    ((string= "" raw-resp)
+                     (error "Error during async grc request."))
+                    (t
+                     (error "Error in grc async request. Cmd: %s\nResponse: %s"
+                            (process-command process) raw-resp)))))
+         (grc-parse-parse-response raw-resp))))
+    (remhash process grc-req-async-cb-fns)))
+
+(defun grc-req-process-filter (process string)
+  (let ((resp (gethash process grc-req-async-responses "")))
+    (puthash process (concat resp string) grc-req-async-responses)))
+
+(defun grc-req-do-async-request (cb-fn verb endpoint
+                                       &optional params no-auth raw-response)
+  (unless no-auth (grc-auth-ensure-authenticated))
+  (let* ((endpoint (concat endpoint
+                           "?client=" grc-req-client-name
+                           "&ck=" (grc-string (floor (* 1000000 (float-time))))
+                           "&output=json"))
+         (params (if (listp params) (grc-req-format-params params) params))
+         (process (start-process "grc request"
+                                 nil
+                                 grc-curl-program
+                                 "--compressed"
+                                 "--silent" "--location" "--location-trusted"
+                                 "--header"
+                                 (format "Authorization: OAuth %s"
+                                         (aget grc-auth-access-token 'token))
+                                 verb
+                                 (if (string= "POST" verb)
+                                     (format "-d \"%s\"" params)
+                                   "")
+                                 (if (and (not (equal "" params))
+                                          (string= "GET" verb))
+                                     (concat endpoint "&" params)
+                                   endpoint))))
+    (puthash process cb-fn grc-req-async-cb-fns)
+    (set-process-filter process 'grc-req-process-filter)
+    (set-process-sentinel process 'grc-req-process-sentinel)))
+
+(defun grc-req-async-get-request (cb-fn endpoint
+                                        &optional params no-auth raw-response)
+  (grc-req-do-async-request cb-fn "GET" endpoint params no-auth raw-response))
+
+(defun grc-req-async-post-request (cb-fn endpoint params
+                                         &optional no-auth raw-response)
+  (grc-req-do-async-request cb-fn "POST" endpoint params no-auth raw-response))
 
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
   "Makes the actual request via curl.  Handles both POST and GET."
@@ -115,7 +177,7 @@
                    (if (string= "POST" verb)
                        (format "-d \"%s\"" params)
                      "")
-                   (if (and (not (empty-string-p params)) (string= "GET" verb))
+                   (if (and (not (equal "" params)) (string= "GET" verb))
                        (concat endpoint "&" params)
                      endpoint)))
          (raw-resp (shell-command-to-string command)))
@@ -126,6 +188,7 @@
         (json-read-from-string
          (decode-coding-string raw-resp 'utf-8))))
      ((string-match "^OK" raw-resp) "OK")
+     ((string= "" raw-resp) (error "Error during grc request."))
      (t (error "Error: %s?%s\nFull command: %s\nResponse: %s"
                endpoint params command raw-resp)))))
 
@@ -153,14 +216,14 @@
   (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
              params "&"))
 
-(defun grc-req-incremental-fetch ()
+(defun grc-req-incremental-fetch (cb-fn)
   "Fetch only entries new since the last fetch for the reading-list"
   (when (string= grc-current-state "reading-list")
-    (grc-req-remote-entries grc-current-state grc-req-last-fetch-time)))
+    (grc-req-remote-entries cb-fn grc-current-state grc-req-last-fetch-time)))
 
 ;; TODO: Need to factor out the state specific voodoo into something
 ;; less kludgy
-(defun grc-req-remote-entries (&optional state since)
+(defun grc-req-remote-entries (cb-fn &optional state since)
   "Get the remote entries.  This behaves slightly differently based on the given
   state. Optionally, only fetch items newer that 'since'"
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
@@ -176,27 +239,40 @@
       (aput 'params "r" "c")))
     (when since
       (aput 'params "ot" (prin1-to-string since)))
-    (let ((resp (grc-parse-parse-response
-                 (grc-req-get-request (grc-req-stream-url state)
-                                      (grc-req-format-params params)))))
-      (if (string= state "broadcast-friends-comments")
-          (grc-req-set-preference "last-allcomments-view"
-                                  (floor (* 1000000 (float-time)))))
-      resp)))
+    (grc-req-async-get-request
+     cb-fn
+     (grc-req-stream-url state)
+     (grc-req-format-params params))
+    (if (string= state "broadcast-friends-comments")
+        (grc-req-set-preference "last-allcomments-view"
+                                (floor (* 1000000 (float-time)))))))
 
-(defun grc-req-edit-tag (id feed tag remove-p &optional extra-params)
+(defun grc-req-mark-kept-unread (id feed)
+  (grc-req-post-request
+   grc-req-edit-tag-url
+   `(("a" . "user/-/state/com.google/kept-unread")
+     ("r" . "user/-/state/com.google/read")
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
+
+(defun grc-req-mark-read (id feed)
+  (grc-req-post-request
+   grc-req-edit-tag-url
+   `(("r" . "user/-/state/com.google/kept-unread")
+     ("a" . "user/-/state/com.google/read")
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
+
+(defun grc-req-edit-tag (id feed tag remove-p)
   "Send a request to remove or add a tag (category/label)"
   (grc-req-post-request
    grc-req-edit-tag-url
-   (format "%s=user/-/state/com.google/%s&async=true&s=%s&i=%s&T=%s%s"
-           (if remove-p
-               "r"
-             "a")
-           tag feed id
-           (grc-auth-get-action-token)
-           (if extra-params
-               (concat "&" extra-params)
-             ""))))
+   `((,(if remove-p "r" "a") . ,(concat "user/-/state/com.google/" tag))
+     ("s" . ,feed)
+     ("i" . ,id)
+     ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-add-comment (entry-id src-id comment)
   "Send a request to add a comment to the given (shared) entry"

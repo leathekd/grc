@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -91,8 +91,9 @@
   "Caches the short-lived access token from the server response"
   (setq grc-auth-access-token
         `((token   . ,(aget resp 'access_token t))
-          (expires . ,(seconds-to-time (+ (aget resp 'expires_in)
-                                          (float-time)))))))
+          (expires . ,(- (+ (aget resp 'expires_in)
+                            (float-time))
+                         300)))))
 
 (defun grc-auth-get-access-token ()
   "Gets the token value from the saved access token alist"
@@ -109,12 +110,11 @@
   (let* ((auth-code (grc-auth-get-auth-code))
          (resp (grc-req-post-request
                 "https://accounts.google.com/o/oauth2/token"
-                (grc-req-format-params
-                 `(("client_id"     . ,grc-auth-client-id)
-                   ("client_secret" . ,grc-auth-client-secret)
-                   ("code"          . ,auth-code)
-                   ("redirect_uri"  . "urn:ietf:wg:oauth:2.0:oob&")
-                   ("grant_type"    . "authorization_code")))
+                `(("client_id"     . ,grc-auth-client-id)
+                  ("client_secret" . ,grc-auth-client-secret)
+                  ("code"          . ,auth-code)
+                  ("redirect_uri"  . "urn:ietf:wg:oauth:2.0:oob")
+                  ("grant_type"    . "authorization_code"))
                 t)))
     ;; TODO: handle errors
     (grc-auth-set-access-token resp)
@@ -125,7 +125,7 @@
   `((token   . ,(grc-req-get-request
                  (concat grc-req-base-url "api/0/token")
                  nil nil t))
-    (expires . ,(seconds-to-time (+ (* 60 25) (float-time))))))
+    (expires . ,(+ (* 60 25) (float-time)))))
 
 (defun grc-auth-set-action-token ()
   "Cache the token from the action token alist"
@@ -134,7 +134,7 @@
 (defun grc-auth-get-action-token ()
   "Return or refresh (based on the expiry timestamp) the action token"
   (when (or (null grc-auth-action-token)
-            (time-less-p (aget grc-auth-action-token 'expires) (current-time)))
+            (<= (aget grc-auth-action-token 'expires) (floor (float-time))))
     (grc-auth-set-action-token))
   (aget grc-auth-action-token 'token t))
 
@@ -149,7 +149,7 @@
   (let ((refresh-token (grc-auth-get-refresh-token)))
     ;; on first call, get-refresh-token will set everything
     (if (and grc-auth-access-token
-             (time-less-p (current-time) (aget grc-auth-access-token 'expires)))
+             (<= (floor (float-time)) (aget grc-auth-access-token 'expires)))
         grc-auth-access-token
       (grc-auth-set-access-token
        (grc-req-post-request
@@ -164,7 +164,8 @@
 (defun grc-auth-ensure-authenticated ()
   "Make sure that all of the tokens are available for requests"
   (if (or (null grc-auth-access-token)
-          (time-less-p (aget grc-auth-access-token 'expires) (current-time)))
+          (<= (floor (aget grc-auth-access-token 'expires))
+              (floor (float-time))))
       (grc-auth-re-authenticate)
     grc-auth-access-token))
 

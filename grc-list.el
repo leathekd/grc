@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -41,6 +41,8 @@
                  (symbol :tag "Source" 'src-title)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
+(defvar grc-list-date-col-width 14)
+(defvar grc-list-source-col-width 23)
 
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
@@ -49,20 +51,24 @@
          (date (seconds-to-time (aget entry 'crawl-date t)))
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
-         (static-width (+ 14 2 23 2 2
+         (static-width (+ grc-list-date-col-width 2
+                          grc-list-source-col-width 2 2
                           (length cats)
                           (if (aget entry 'comments t) 4 0)
                           1))
          (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry))))
+         (title (grc-prepare-text (grc-title-for-printing entry)))
+         (row-format (format "%%-%ss  %%-%ss  %%s"
+                             grc-list-date-col-width
+                             grc-list-source-col-width)))
     (insert
-     (format "%-14s  %-23s  %s"
+     (format row-format
              (format-time-string
               (if (> one-week (float-time date))
                   "%m/%d %l:%M %p"
                 "  %a %l:%M %p")
               date)
-             (grc-truncate-text source 23 t)
+             (grc-truncate-text source grc-list-source-col-width t)
              (grc-truncate-text title title-width t)))
 
     (when (< 0 (length cats))
@@ -87,13 +93,18 @@
       (when (> 1 (point))
         (delete-backward-char 1))
 
-      (grc-highlight-keywords (grc-keywords entries))
+      (grc-highlight-keywords
+       (mapcar (lambda (e) (grc-truncate-text
+                       e grc-list-source-col-width t))
+               (grc-keywords entries)))
       (goto-char (point-min)))))
 
 (defun grc-list-incremental-display ()
   "Fetch new entries and add them to the grc-list-buffer"
-  (setq grc-entry-cache (append (grc-req-incremental-fetch) grc-entry-cache))
-  (grc-list-refresh))
+  (grc-req-incremental-fetch
+   (lambda (resp)
+     (setq grc-entry-cache (append resp grc-entry-cache))
+     (grc-list-refresh))))
 
 (defun grc-list-get-current-entry ()
   "utility function to get the entry from the current line in list view"
@@ -154,22 +165,26 @@
      (grc-list-next-entry)
      (grc-list-refresh)))
 
-(defun grc-list-mark-read (remove)
+(defun grc-list-mark-read ()
   "Mark the current entry as Read.  Use the prefix operator to unmark."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "read") remove))
+  (interactive)
+  (grc-mark-read (grc-list-get-current-entry))
+  (grc-list-next-entry)
+  (grc-list-refresh))
 
 (defun grc-list-mark-read-and-remove ()
   "Mark the current entry as Read and remove it immediately from the list."
   (interactive)
-  (funcall (grc-mark-fn "read") (grc-list-get-current-entry))
+  (grc-mark-read (grc-list-get-current-entry))
   (setq grc-entry-cache (delete (grc-list-get-current-entry) grc-entry-cache))
   (grc-list-refresh))
 
-(defun grc-list-mark-kept-unread (remove)
+(defun grc-list-mark-kept-unread ()
   "Mark the current entry as Kept Unread.  Use the prefix operator to unmark."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "kept-unread") remove))
+  (interactive)
+  (grc-mark-kept-unread (grc-list-get-current-entry))
+  (grc-list-next-entry)
+  (grc-list-refresh))
 
 (defun grc-list-mark-starred (remove)
   "Star the current entry.  Use the prefix operator to un-star."
@@ -270,8 +285,8 @@
   *    Star the current entry.  Use the prefix operator to un-star.
   !    Share the current entry.  Use the prefix operator to un-share.
   x    Mark the current entry as Read and remove it immediately from the list.
-  r    Mark the current entry as Read.  Use the prefix operator to unmark.
-  k    Mark the current entry as Kept Unread.  Use the prefix operator to unmark
+  r    Mark the current entry as Read.
+  k    Mark the current entry as Kept Unread.
   ?    Show the help message for the grc list screen
   q    Kill the current buffer."
   (interactive)

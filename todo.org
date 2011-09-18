@@ -25,7 +25,7 @@
 ** DONE fill-buffer to prevent long lines
 ** DONE fix rendering without w3m
 ** TODO links should respond to mouse clicks
-** TODO add comment
+** DONE add comment
 * Request
 ** TODO Should grc-req contain low level stuff (get, post) or
    higher level stuff (mark-all-read), or both?  It's inbetween now...

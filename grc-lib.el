@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -49,12 +49,18 @@
       thing
     (prin1-to-string thing t)))
 
+(defun grc-any-p (pred lst)
+  (member* nil
+           lst
+           :test `(lambda (_ a) (,pred a))))
+
 (defun grc-flatten (x)
   "Takes a nested list of lists and returns the contents as a single flat list.
   (grc-flatten nil) returns nil"
-  (cond ((null x) nil)
-        ((listp x) (append (grc-flatten (car x)) (grc-flatten (cdr x))))
-        (t (list x))))
+  (let ((lst x))
+    (while (grc-any-p 'listp lst)
+      (setq lst (apply #'append (mapcar 'grc-list lst))))
+    lst))
 
 (defun grc-get-in (alist seq &optional not-found)
   "Return the value in a nested alist structure.

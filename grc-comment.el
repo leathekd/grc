@@ -3,7 +3,7 @@
 ;; Copyright (c) 2011 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
-;; URL: http://www.github.com/leathekd/google-reader-client
+;; URL: http://www.github.com/leathekd/grc
 ;; Version: 0.1.0
 
 ;; This file is not part of GNU Emacs.
@@ -72,7 +72,7 @@
       (grc-comment-mode)
       (setq grc-comment-callback-fn cb-fn)
       (setq grc-comment-callback-args cb-args)
-      (switch-to-buffer grc-comment-buffer))))
+      (pop-to-buffer grc-comment-buffer))))
 
 (provide 'grc-comment)
 ;;; grc-comment.el ends here
