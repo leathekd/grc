@@ -95,6 +95,7 @@
   :type 'string)
 
 (defun grc-req-auth-header ()
+  "returns the auth header for use in curl requests"
   (format grc-auth-header-format
           (aget grc-auth-access-token 'token)))
 
@@ -102,6 +103,8 @@
 (defvar grc-req-async-responses (make-hash-table :test 'equal))
 
 (defun grc-req-process-sentinel (process event)
+  "Parses the gathered response and calls the cb-fn with the result when the
+  process is done"
   (when (string-match "^finished" event)
     (let ((raw-resp (gethash process grc-req-async-responses)))
       (funcall
@@ -120,11 +123,13 @@
     (remhash process grc-req-async-cb-fns)))
 
 (defun grc-req-process-filter (process string)
+  "Gathers up the raw response from the request"
   (let ((resp (gethash process grc-req-async-responses "")))
     (puthash process (concat resp string) grc-req-async-responses)))
 
 (defun grc-req-do-async-request (cb-fn verb endpoint
                                        &optional params no-auth raw-response)
+  "Makes the actual async request via curl.  Handles both POST and GET."
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
                            "?client=" grc-req-client-name
@@ -153,13 +158,18 @@
 
 (defun grc-req-async-get-request (cb-fn endpoint
                                         &optional params no-auth raw-response)
+  "Makes an async request GET to Google.  Takes a callback function that will be
+  called with the parsed response"
   (grc-req-do-async-request cb-fn "GET" endpoint params no-auth raw-response))
 
 (defun grc-req-async-post-request (cb-fn endpoint params
                                          &optional no-auth raw-response)
+  "Makes an async request POST to Google.  Takes a callback function that will
+  be called with the parsed response"
   (grc-req-do-async-request cb-fn "POST" endpoint params no-auth raw-response))
 
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
+  "Makes the actual request via curl.  Handles both POST and GET."
   (unless no-auth (grc-auth-ensure-authenticated))
   (let* ((endpoint (concat endpoint
                            "?client=" grc-req-client-name
@@ -191,31 +201,39 @@
                endpoint params command raw-resp)))))
 
 (defun grc-req-get-request (endpoint &optional params no-auth raw-response)
+  "Makes a GET request to Google"
   (grc-req-do-request "GET" endpoint params no-auth raw-response))
 
 (defun grc-req-post-request (endpoint params &optional no-auth raw-response)
+  "Makes a POST request to Google"
   (grc-req-do-request "POST" endpoint params no-auth raw-response))
 
 (defvar grc-req-stream-url-pattern
   "http://www.google.com/reader/api/0/stream/contents/%s")
 
 (defun grc-req-stream-url (&optional state)
+  "Get the url for Google Reader entries, optionally limited to a specified
+  state- e.g., kept-unread"
   (let ((stream-state (if (null state)
                           ""
                         (concat "user/-/state/com.google/" state))))
     (format grc-req-stream-url-pattern stream-state)))
 
 (defun grc-req-format-params (params)
+  "Convert an alist of params into an & delimeted string suitable for curl"
   (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
              params "&"))
 
 (defun grc-req-incremental-fetch (cb-fn)
+  "Fetch only entries new since the last fetch for the reading-list"
   (when (string= grc-current-state "reading-list")
     (grc-req-remote-entries cb-fn grc-current-state grc-req-last-fetch-time)))
 
 ;; TODO: Need to factor out the state specific voodoo into something
 ;; less kludgy
 (defun grc-req-remote-entries (cb-fn &optional state since)
+  "Get the remote entries.  This behaves slightly differently based on the given
+  state. Optionally, only fetch items newer that 'since'"
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
                   ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
@@ -238,6 +256,8 @@
                                 (floor (* 1000000 (float-time)))))))
 
 (defun grc-req-mark-kept-unread (id feed)
+  "Send a request to mark an entry as kept-unread.  Will also remove the read
+  category"
   (grc-req-post-request
    grc-req-edit-tag-url
    `(("a" . "user/-/state/com.google/kept-unread")
@@ -247,6 +267,8 @@
      ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-mark-read (id feed)
+  "Send a request to mark an entry as read.  Will also remove the kept-unread
+  category"
   (grc-req-post-request
    grc-req-edit-tag-url
    `(("r" . "user/-/state/com.google/kept-unread")
@@ -256,6 +278,7 @@
      ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-edit-tag (id feed tag remove-p)
+  "Send a request to remove or add a tag (category/label)"
   (grc-req-post-request
    grc-req-edit-tag-url
    `((,(if remove-p "r" "a") . ,(concat "user/-/state/com.google/" tag))
@@ -264,6 +287,7 @@
      ("T" . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-add-comment (entry-id src-id comment)
+  "Send a request to add a comment to the given (shared) entry"
   (let ((params `(("s"       . ,src-id)
                   ("i"       . ,entry-id)
                   ("T"       . ,(grc-string (grc-auth-get-action-token)))
@@ -272,49 +296,59 @@
     (grc-req-post-request grc-req-edit-comment-url params)))
 
 (defun grc-req-friends ()
+  "Fetch the friends list"
   (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"))
 
+(defun grc-req-unread-counts ()
+  "Fetch the unread counts for all feeds"
+  (aget (grc-req-get-request
+         grc-req-unread-count-url
+         `(("n"           . ,(grc-string grc-fetch-count))
+           ("all"         . "true")
+           ("allcomments" . "true")
+           ("sharers"     . ,(grc-req-sharers-hash))))
+        'unreadcounts t))
+
 (defun grc-req-unread-comment-count ()
-  (let* ((unread-counts
-          (aget (grc-req-get-request
-                 grc-req-unread-count-url
-                 `(("n"           . ,(grc-string grc-fetch-count))
-                   ("all"         . "true")
-                   ("allcomments" . "true")
-                   ("sharers"     . ,(grc-req-sharers-hash))))
-                'unreadcounts t))
-         (unread-comments
-          (first (remove-if-not (lambda (c)
-                                  (string-match "broadcast-friends-comments"
-                                                (aget c 'id)))
-                                unread-counts))))
+  "Fetch the unread counts for any unread comments"
+  (let ((unread-comments
+         (first (remove-if-not (lambda (c)
+                                 (string-match "broadcast-friends-comments"
+                                               (aget c 'id)))
+                               (grc-req-unread-counts)))))
     (aget unread-comments 'count t)))
 
 (defvar grc-req-sharers-hash-val nil "caches the value of the sharers hash")
 (defun grc-req-sharers-hash ()
+  "Get the hash that Google uses to identify the people who are sharing items
+  and comments with you"
   (or grc-req-sharers-hash-val
       (setq grc-req-sharers-hash-val
             (aget (grc-req-friends) 'encodedSharersList))))
 
-(defun grc-req-mark-all-read (src)
+(defun grc-req-mark-all-read (&optional src)
+  "Mark all items for 'src' as read"
   (grc-req-post-request
    "http://www.google.com/reader/api/0/mark-all-as-read"
-   (format "s=%s&ts=%s&T=%s"
-           (or src "user/-/state/com.google/reading-list")
-           (floor (* 1000000 (float-time)))
-           (grc-auth-get-action-token))))
+   `(("s"  . ,(or src "user/-/state/com.google/reading-list"))
+     ("ts" . ,(floor (* 1000000 (float-time))))
+     ("T"  . ,(grc-auth-get-action-token)))))
 
 (defun grc-req-subscriptions ()
+  "Get a list of all subscribed feeds"
   (grc-req-get-request grc-req-subscribed-feed-list-url))
 
 (defun grc-req-set-preference (key val)
+  "Set a preference in Google Reader"
   (grc-req-post-request grc-req-preference-set-url
                         `(("k" . ,(grc-string key))
                           ("v" . ,(grc-string val))
                           ("T" . ,(grc-string (grc-auth-get-action-token))))))
 
-(defun grc-req-share-with-comment (comment title snippet src-title src-url
-                                           entry-url)
+(defun grc-req-share-with-comment
+  (comment title snippet src-title src-url entry-url)
+  "Share an entry with friends. This actually makes a new item in Google Reader
+  the same way that the Reader bookmarklet does."
   (let ((params `(("share"      . "true")
                   ("linkify"    . "true")
                   ("T"          . ,(grc-string (grc-auth-get-action-token)))
