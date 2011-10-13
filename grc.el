@@ -283,6 +283,7 @@
 (defun grc (&optional state)
   "Display or refresh the grc reading list.  Main entry function."
   (interactive "P")
+  (grc-auth-verify-config)
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
                             grc-current-state))

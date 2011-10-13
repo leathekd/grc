@@ -60,8 +60,12 @@
 
 (defun grc-auth-verify-config ()
   "Verify that the client id and client secret are set"
-  (unless (and grc-auth-client-id grc-auth-client-secret)
-    (error "Missing Client Id and/or Client Secret.  See README for info.")))
+  (when (or (and (string= "" grc-auth-client-id)
+                   (string= "" grc-auth-client-secret))
+              (and (null grc-auth-client-id)
+                   (null grc-auth-client-secret)))
+    (error (concat "Missing Client Id and/or Client Secret."
+                   "See https://github.com/leathekd/grc for details."))))
 
 (defun grc-auth-get-auth-code ()
   "Opens the browser to get the authorization code from Google."
