@@ -51,15 +51,49 @@
 
 (ert-deftest grc-test-strip-html ()
   (with-temp-buffer
-    (insert "<html><head></head><body>")
+    (insert "<html><head></head><body>\n")
     (insert "<div>Hello <b>THERE</b></div>\n")
-    (insert "<p>Hello <a href=\"#\">THERE</a></a>\n")
+    (insert "<p>Hello <a href=\"#\">THERE</a>\n")
     (insert "</body></html>")
     (grc-strip-html)
     (should (string= "Hello THERE\nHello THERE\n"
                      (buffer-string)))))
 
-(ert-deftest grc-test-footnote-anchors ())
+(ert-deftest grc-test-strip-html-to-string ()
+  (should (string= "Hello THERE\nHello THERE\n"
+                   (grc-strip-html-to-string
+                    (concat "<html><head></head><body>\n"
+                            "<div>Hello <b>THERE</b></div>\n"
+                            "<p>Hello <a href=\"#\">THERE</a></p>\n"
+                            "</body></html>")))))
+
+(ert-deftest grc-test-footnote-anchors ()
+  (let ((html-string (concat "<html><head></head><body>\n"
+                             "<div>Hello <b>THERE</b></div>\n"
+                             "<p>Hello <a href='google.com'>THERE</a></p>\n"
+                             "<p>Hello <a href='google.com'>THERE</a></p>\n"
+                             "</body></html>")))
+    (with-temp-buffer
+      (insert html-string)
+      (grc-footnote-anchors)
+      (should (string= (buffer-string)
+                       (concat "<html><head></head><body>\n"
+                               "<div>Hello <b>THERE</b></div>\n"
+                               "<p>Hello THERE [google.com]</p>\n"
+                               "<p>Hello THERE [google.com]</p>\n"
+                               "</body></html>"))))
+
+    (with-temp-buffer
+      (insert html-string)
+      (grc-footnote-anchors t)
+      (should (string= (buffer-string)
+                       (concat "<html><head></head><body>\n"
+                               "<div>Hello <b>THERE</b></div>\n"
+                               "<p>Hello THERE [1]</p>\n"
+                               "<p>Hello THERE [2]</p>\n"
+                               "</body></html>\n\nLinks:\n"
+                               "[1] google.com\n[2] google.com\n"))))))
+
 (ert-deftest grc-test-clean-buffer ())
 (ert-deftest grc-test-clean-text ())
 (ert-deftest grc-test-prepare-text ())

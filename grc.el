@@ -122,7 +122,10 @@
 (defun grc-normalize-newlines ()
   "Reduces multiple blank lines down to one"
   (goto-char (point-min))
-  (grc-replace-regexp "^\n+" "\n"))
+  (grc-replace-regexp "^\n+" "\n")
+  (when (equal "\n" (buffer-substring (point-min) (1+ (point-min))))
+    (goto-char (point-min))
+    (delete-char 1)))
 
 ;; TODO: this is doing more than just stripping html, should it be
 ;; refactored to just strip html and move the entities, trimming, and
@@ -139,9 +142,9 @@
 (defun grc-strip-html-to-string (str)
   "Takes a string and returns it stripped of HTML"
   (with-temp-buffer
-    (insert text)
+    (insert str)
     (grc-strip-html)
-    (buffer-substring (point-min) (point-max))))
+    (buffer-string)))
 
 (defun grc-footnote-anchors (&optional use-annotations links)
   "Walks through a buffer of html and removes the anchor tags,
@@ -150,19 +153,16 @@
   number in place of the link and list the links at the bottom.
 
   links isn't meant to be passed in, it's used for recursive calls"
+  (goto-char (point-min))
   (if (search-forward-regexp "<a" nil t)
       (let* ((p1 (point))
              (p2 (search-forward-regexp ">" nil t))
              (p3 (search-forward-regexp "</a>" nil t))
              (attrs (html2text-get-attr p1 p2))
              (href (html2text-attr-value attrs "href"))
-             (text (buffer-substring-no-properties p2 (- p3 4)))
-             ;; TODO: replace with strip-html-to-text after tests are
-             ;; in place
-             (text (with-temp-buffer
-                     (insert text)
-                     (grc-strip-html)
-                     (buffer-substring (point-min) (point-max)))))
+             (href (substring href 1 (1- (length href))))
+             (text (grc-strip-html-to-string
+                    (buffer-substring-no-properties p2 (- p3 4)))))
         (if (and text (not (equal "" (grc-trim text))))
             (progn
               (delete-region (- p1 2) p3)
