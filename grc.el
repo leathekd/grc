@@ -287,6 +287,9 @@
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
                             grc-current-state))
+  (unless (get-buffer grc-list-buffer)
+    (grc-list-make-buffer "Fetching entries..."))
+  (switch-to-buffer grc-list-buffer)
   (grc-req-remote-entries
    (lambda (resp)
      (grc-list-display resp)
@@ -421,10 +424,10 @@
                                      (aget entry 'src-title)
                                      (aget entry 'src-url)
                                      (aget entry 'link))
-         (grc-list-refresh))
+         (grc-list-display))
        entry)
     (funcall (grc-mark-fn "broadcast") entry remove))
-  (grc-list-refresh))
+  (grc-list-display))
 
 (defun grc-add-comment (entry)
   "Add a comment to the current entry"
@@ -432,7 +435,7 @@
   (grc-comment-open-buffer
    (lambda (comment entry)
      (grc-req-add-comment (aget entry 'id) (aget entry 'src-id) comment)
-     (grc-list-refresh))
+     (grc-list-display))
    entry))
 
 (provide 'grc)

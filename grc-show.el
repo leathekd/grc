@@ -125,8 +125,9 @@ list links at the bottom"
                                                 comments)
                                         (grc-keywords grc-entry-cache)))))
     (setq grc-current-entry (grc-mark-read entry))
+    (goto-char (point-min))
     (switch-to-buffer buffer)
-    (grc-list-refresh)))
+    (grc-list-display)))
 
 (defun grc-show-help ()
   "Show the help message for the grc show view"
@@ -137,25 +138,25 @@ list links at the bottom"
   "Mark the current entry as Keep Unread."
   (interactive)
   (setq grc-current-entry (grc-mark-kept-unread grc-current-entry))
-  (grc-list-refresh))
+  (grc-list-display))
 
 (defun grc-show-mark-read ()
   "Mark the current entry as Read"
   (interactive)
   (setq grc-current-entry (grc-mark-read grc-current-entry))
-  (grc-list-refresh))
+  (grc-list-display))
 
 (defun grc-show-mark-starred (remove)
   "Star the current entry."
   (interactive "P")
   (funcall (grc-mark-fn "starred") grc-current-entry remove)
-  (grc-list-refresh))
+  (grc-list-display))
 
 (defun grc-show-share (remove)
   "Share the current entry.  Use the prefix operator to un-share."
   (interactive "P")
   (grc-share grc-current-entry remove)
-  (grc-list-refresh))
+  (grc-list-display))
 
 (defun grc-show-add-comment ()
   "Comment on the current shared entry."
@@ -163,7 +164,7 @@ list links at the bottom"
   (if (grc-shared-p grc-current-entry)
       (progn
         (grc-add-comment grc-current-entry)
-        (grc-list-refresh))
+        (grc-list-display))
     (error "Not a shared entry")))
 
 (defun grc-show-kill-this-buffer ()
@@ -181,7 +182,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
+            (grc-list-display)
             (forward-line)))
       (error "No more entries"))))
 
@@ -193,7 +194,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
+            (grc-list-display)
             (forward-line -1)))
       (error "No previous entries"))))
 
