@@ -42,7 +42,7 @@
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 (defvar grc-list-date-col-width 14)
-(defvar grc-list-source-col-width 23)
+(defvar grc-list-source-col-width 16)
 
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
