@@ -289,11 +289,10 @@
   (unless (get-buffer grc-list-buffer)
     (grc-list-make-buffer "Fetching entries..."))
   (switch-to-buffer grc-list-buffer)
-  (grc-req-remote-entries
-   (lambda (resp)
-     (grc-list-display resp)
-     (switch-to-buffer grc-list-buffer))
-   grc-current-state))
+  (with-response (grc-req-remote-entries grc-current-state) resp
+   (message "resp %s" resp)
+   (grc-list-display resp)
+   (switch-to-buffer grc-list-buffer)))
 
 ;;;###autoload
 (defun grc-logout ()

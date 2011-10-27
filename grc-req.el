@@ -115,6 +115,50 @@
   (let ((resp (gethash process grc-req-async-responses "")))
     (puthash process (concat resp string) grc-req-async-responses)))
 
+
+;; http://nic.ferrier.me.uk/blog/2011_10/emacs_lisp_is_good_further_reports_suggest
+(defmacro grc-req-with-response (command response-sym &rest sentinel-forms)
+  (let ((buffer-name (generate-new-buffer-name "grc-req")))
+    `(let* ((proc (start-process-shell-command "grc-req" ,buffer-name ,command))
+            (sentinel-cb
+             (lambda (process signal)
+               (when (string-match "^finished" signal)
+                 (with-current-buffer ,buffer-name
+                   (let ((,response-sym
+                          (grc-parse-parse-response
+                           (cond
+                            ((string-match "^{" (buffer-string))
+                             (let ((json-array-type 'list))
+                               (json-read-from-string
+                                (decode-coding-string (buffer-string) 'utf-8))))
+                            ((string-match "^OK" (buffer-string))
+                             "OK")
+                            (t
+                             (error "Error: Command: %s\nResponse: %s"
+                                    command
+                                    (buffer-string)))))))
+                     ,@sentinel-forms))))))
+       (set-process-sentinel proc sentinel-cb))))
+
+(defun grc-req-curl-command (verb endpoint
+                                  &optional params no-auth raw-response)
+  (let ((endpoint (concat endpoint
+                          "?client=" grc-req-client-name
+                          "&ck=" (grc-string (floor (* 1000000 (float-time))))
+                          "&output=json"))
+        (params (if (listp params) (grc-req-format-params params) params)))
+    (format "%s %s %s -X %s %s '%s' "
+            grc-curl-program
+            grc-curl-options
+            (if no-auth "" (grc-req-auth-header))
+            verb
+            (if (string= "POST" verb)
+                (format "-d \"%s\"" params)
+              "")
+            (if (and (not (equal "" params)) (string= "GET" verb))
+                (concat endpoint "&" params)
+              endpoint))))
+
 (defun grc-req-do-async-request (cb-fn verb endpoint
                                        &optional params no-auth raw-response)
   "Makes the actual async request via curl.  Handles both POST and GET."
@@ -219,7 +263,7 @@
 
 ;; TODO: Need to factor out the state specific voodoo into something
 ;; less kludgy
-(defun grc-req-remote-entries (cb-fn &optional state since)
+(defun grc-req-remote-entries (&optional state since)
   "Get the remote entries.  This behaves slightly differently based on the given
   state. Optionally, only fetch items newer that 'since'"
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
@@ -231,8 +275,8 @@
       (aput 'params "r" "n")))
     (when since
       (aput 'params "ot" (prin1-to-string since)))
-    (grc-req-async-get-request
-     cb-fn
+    (grc-req-curl-command
+     "GET"
      (grc-req-stream-url state)
      (grc-req-format-params params))))
 
