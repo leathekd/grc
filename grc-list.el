@@ -54,7 +54,6 @@
          (static-width (+ grc-list-date-col-width 2
                           grc-list-source-col-width 2 2
                           (length cats)
-                          (if (aget entry 'comments t) 4 0)
                           1))
          (title-width (- (window-width) static-width))
          (title (grc-prepare-text (grc-title-for-printing entry)))
@@ -73,8 +72,6 @@
 
     (when (< 0 (length cats))
       (insert (format " (%s)" cats)))
-    (when (aget entry 'comments t)
-      (insert (format " [C]")))
     (insert "\n")))
 
 (defun grc-list-print-entries (entries)
@@ -144,11 +141,10 @@
 (defun grc-list-header-line ()
   "Set the header line for the grc-list-buffer"
   (setq header-line-format
-        (format "Google Reader Client -- Viewing: %s (%s) %s  Sort: %s %s"
+        (format "Google Reader Client -- Viewing: %s (%s)  Sort: %s %s"
                 (cdr (assoc grc-current-state
                             grc-google-categories))
                 (length grc-entry-cache)
-                (if (grc-req-unread-comment-count) "[C]" "")
                 (car (rassoc (or grc-current-sort grc-default-sort-column)
                              grc-sort-columns))
                 (if grc-current-sort-reversed
@@ -198,17 +194,6 @@
   "Star the current entry.  Use the prefix operator to un-star."
   (interactive "P")
   (funcall (grc-list-mark-fn "starred") remove))
-
-(defun grc-list-share (remove)
-  "Share the current entry.  Use the prefix operator to un-share."
-  (interactive "P")
-  (grc-share (grc-list-get-current-entry) remove)
-  (grc-list-display))
-
-(defun grc-list-share (remove)
-  "Share the current entry.  Use the prefix operator to un-share."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "broadcast") remove))
 
 (defun grc-list-mark-all-read (feed)
   "Mark all as Read."
@@ -265,7 +250,6 @@
     (define-key map "*"         'grc-list-mark-starred)
     (define-key map "n"         'grc-list-next-entry)
     (define-key map "p"         'grc-list-previous-entry)
-    (define-key map "!"         'grc-list-share)
     (define-key map " "         'grc-list-show-entry)
     (define-key map (kbd "RET") 'grc-list-show-entry)
     (define-key map "o"         'grc-list-sort)
@@ -291,7 +275,6 @@
   p    Move the point to the previous entry.
   n    Move the point to the next entry.
   *    Star the current entry.  Use the prefix operator to un-star.
-  !    Share the current entry.  Use the prefix operator to un-share.
   x    Mark the current entry as Read and remove it immediately from the list.
   r    Mark the current entry as Read.
   k    Mark the current entry as Kept Unread.

@@ -53,16 +53,13 @@
     (title      . ,(aget json-entry 'title))
     ;; TODO: could be many links here...
     (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
-    (src-title  . ,(or (aget (first (aget json-entry 'via)) 'title)
-                       (grc-get-in json-entry '(origin title))
-                       (format "%s's Shared Items" (aget json-entry 'author))))
+    (src-title  . ,(grc-get-in json-entry '(origin title)))
     (src-url    . ,(grc-get-in json-entry '(origin htmlUrl)))
     (src-id     . ,(grc-get-in json-entry '(origin streamId)))
 
     (summary    . ,(grc-get-in json-entry '(summary content)))
     (content    . ,(grc-get-in json-entry '(content content)))
-    (categories . ,(grc-parse-get-categories json-entry))
-    (comments   . ,(aget json-entry 'comments t))))
+    (categories . ,(grc-parse-get-categories json-entry))))
 
 (defun grc-parse-parse-response (root)
   "Extract all the entries from the parsed json"

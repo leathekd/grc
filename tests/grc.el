@@ -114,6 +114,3 @@
 (ert-deftest grc-test-mark-kept-unread ())
 (ert-deftest grc-test-mark-starred ())
 (ert-deftest grc-test-view-external ())
-(ert-deftest grc-test-shared-p ())
-(ert-deftest grc-test-share ())
-(ert-deftest grc-test-add-comment ())

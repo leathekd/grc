@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+(require 'assoc)
 (require 'cl)
 (require 'html2text)
 
@@ -40,7 +41,6 @@
 (require 'grc-req)
 (require 'grc-parse)
 (require 'grc-highlight)
-(require 'grc-comment)
 (require 'grc-list)
 (require 'grc-show)
 
@@ -62,12 +62,8 @@
   :group 'grc)
 
 (defvar grc-google-categories
-  '(("broadcast"                  . "My Shared")
-    ("broadcast-friends"          . "Shared")
-    ("broadcast-friends-comments" . "Comments")
-    ("fresh"                      . "Fresh")
+  '(("fresh"                      . "Fresh")
     ("kept-unread"                . "Kept Unread")
-    ("like"                       . "Liked")
     ("read"                       . "Read")
     ("reading-list"               . "Reading List")
     ("starred"                    . "Starred")
@@ -78,8 +74,7 @@
     ("tracking-mobile-read"       . "Tracking Mobile Read"))
   "list of the categories that google adds to entries")
 
-(defvar grc-state-alist '("Comments" "Kept Unread" "My Shared" "Read"
-                          "Reading List" "Shared" "Starred"))
+(defvar grc-state-alist '("Kept Unread" "Read" "Reading List" "Starred"))
 (defvar grc-current-state "reading-list")
 
 (defvar grc-entry-cache nil)
@@ -404,39 +399,6 @@
           (browse-url link)
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
-
-(defun grc-shared-p (entry)
-  "Returns true if the entry has been shared and may be commented on"
-  (or (member "broadcast" (aget grc-current-entry 'categories))
-      (member "broadcast-friends" (aget grc-current-entry 'categories))))
-
-(defun grc-share (entry remove)
-  "Share the current entry.  Use the prefix operator to un-share."
-  (interactive "P")
-  (if (and (not remove)
-           (yes-or-no-p "Add comment?"))
-      (grc-comment-open-buffer
-       (lambda (comment entry)
-         (grc-req-share-with-comment comment
-                                     (aget entry 'title)
-                                     (or (aget entry 'summary t)
-                                         (aget entry 'content t))
-                                     (aget entry 'src-title)
-                                     (aget entry 'src-url)
-                                     (aget entry 'link))
-         (grc-list-display))
-       entry)
-    (funcall (grc-mark-fn "broadcast") entry remove))
-  (grc-list-display))
-
-(defun grc-add-comment (entry)
-  "Add a comment to the current entry"
-  (interactive "P")
-  (grc-comment-open-buffer
-   (lambda (comment entry)
-     (grc-req-add-comment (aget entry 'id) (aget entry 'src-id) comment)
-     (grc-list-display))
-   entry))
 
 (provide 'grc)
 ;;; grc.el ends here

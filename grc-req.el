@@ -53,13 +53,6 @@
           "api/0/unread-count")
   "URL for retrieving unread counts for subscribed feeds.")
 
-(defvar grc-req-preference-list-url
-  (concat grc-req-base-url
-          "api/0/preference/list")
-  "URL for retrieving preferences stored by Google Reader.
-  For the most part, this is only used by the Google Reader UI,
-  grc just gets and sets the last-allcomments-view pref.")
-
 (defvar grc-req-preference-set-url
   (concat grc-req-base-url
           "api/0/preference/set")
@@ -74,11 +67,6 @@
   (concat grc-req-base-url
           "api/0/item/edit")
   "URL for editing an entry")
-
-(defvar grc-req-edit-comment-url
-  (concat grc-req-base-url
-          "api/0/comment/edit")
-  "URL for adding/editing a comment")
 
 (defvar grc-req-last-fetch-time nil)
 
@@ -235,25 +223,18 @@
   "Get the remote entries.  This behaves slightly differently based on the given
   state. Optionally, only fetch items newer that 'since'"
   (let ((params `(("n"       . ,(grc-string grc-fetch-count))
-                  ("sharers" . ,(grc-req-sharers-hash))
                   ("client"  . "emacs-grc-client"))))
     (cond
      ((string= state "reading-list")
       (setq grc-req-last-fetch-time (floor (float-time)))
       (aput 'params "xt" "user/-/state/com.google/read")
-      (aput 'params "r" "n"))
-     ((string= state "broadcast-friends-comments")
-      (aput 'params "co" "true")
-      (aput 'params "r" "c")))
+      (aput 'params "r" "n")))
     (when since
       (aput 'params "ot" (prin1-to-string since)))
     (grc-req-async-get-request
      cb-fn
      (grc-req-stream-url state)
-     (grc-req-format-params params))
-    (if (string= state "broadcast-friends-comments")
-        (grc-req-set-preference "last-allcomments-view"
-                                (floor (* 1000000 (float-time)))))))
+     (grc-req-format-params params))))
 
 (defun grc-req-mark-kept-unread (id feed)
   "Send a request to mark an entry as kept-unread.  Will also remove the read
@@ -286,45 +267,13 @@
      ("i" . ,id)
      ("T" . ,(grc-auth-get-action-token)))))
 
-(defun grc-req-add-comment (entry-id src-id comment)
-  "Send a request to add a comment to the given (shared) entry"
-  (let ((params `(("s"       . ,src-id)
-                  ("i"       . ,entry-id)
-                  ("T"       . ,(grc-string (grc-auth-get-action-token)))
-                  ("action"  . "addcomment")
-                  ("comment" . ,comment))))
-    (grc-req-post-request grc-req-edit-comment-url params)))
-
-(defun grc-req-friends ()
-  "Fetch the friends list"
-  (grc-req-get-request "http://www.google.com/reader/api/0/friend/list"))
-
 (defun grc-req-unread-counts ()
   "Fetch the unread counts for all feeds"
   (aget (grc-req-get-request
          grc-req-unread-count-url
          `(("n"           . ,(grc-string grc-fetch-count))
-           ("all"         . "true")
-           ("allcomments" . "true")
-           ("sharers"     . ,(grc-req-sharers-hash))))
+           ("all"         . "true")))
         'unreadcounts t))
-
-(defun grc-req-unread-comment-count ()
-  "Fetch the unread counts for any unread comments"
-  (let ((unread-comments
-         (first (remove-if-not (lambda (c)
-                                 (string-match "broadcast-friends-comments"
-                                               (aget c 'id)))
-                               (grc-req-unread-counts)))))
-    (aget unread-comments 'count t)))
-
-(defvar grc-req-sharers-hash-val nil "caches the value of the sharers hash")
-(defun grc-req-sharers-hash ()
-  "Get the hash that Google uses to identify the people who are sharing items
-  and comments with you"
-  (or grc-req-sharers-hash-val
-      (setq grc-req-sharers-hash-val
-            (aget (grc-req-friends) 'encodedSharersList))))
 
 (defun grc-req-mark-all-read (&optional src)
   "Mark all items for 'src' as read"
@@ -337,29 +286,6 @@
 (defun grc-req-subscriptions ()
   "Get a list of all subscribed feeds"
   (grc-req-get-request grc-req-subscribed-feed-list-url))
-
-(defun grc-req-set-preference (key val)
-  "Set a preference in Google Reader"
-  (grc-req-post-request grc-req-preference-set-url
-                        `(("k" . ,(grc-string key))
-                          ("v" . ,(grc-string val))
-                          ("T" . ,(grc-string (grc-auth-get-action-token))))))
-
-(defun grc-req-share-with-comment
-  (comment title snippet src-title src-url entry-url)
-  "Share an entry with friends. This actually makes a new item in Google Reader
-  the same way that the Reader bookmarklet does."
-  (let ((params `(("share"      . "true")
-                  ("linkify"    . "true")
-                  ("T"          . ,(grc-string (grc-auth-get-action-token)))
-                  ("annotation" . ,comment)
-                  ("title"      . ,(aget entry 'title))
-                  ("snippet"    . ,(or (aget entry 'summary t)
-                                       (aget entry 'content t)))
-                  ("srcTitle"   . ,(aget entry 'src-title))
-                  ("srcUrl"     . ,(aget entry 'src-url))
-                  ("url"        . ,(aget entry 'link)))))
-    (grc-req-post-request grc-req-edit-item-url params)))
 
 (provide 'grc-req)
 ;;; grc-req.el ends here

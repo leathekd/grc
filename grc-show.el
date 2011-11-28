@@ -48,16 +48,6 @@ list links at the bottom"
 
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
-(defun grc-show-print-comment (comment)
-  "Print a comment in the grc-show-buffer"
-  (insert (format "%s - %s\n%s\n\n"
-                  (aget comment 'author)
-                  (format-time-string
-                   "%a %m/%d %l:%M %p"
-                   (seconds-to-time (aget comment 'createdTime)))
-                  (or (aget comment 'htmlContent)
-                      (aget comment 'plainContent)))))
-
 (defun grc-show-entry (entry)
   "Print the given entry in the grc-show-buffer"
   (let ((buffer (get-buffer-create grc-show-buffer)))
@@ -68,8 +58,7 @@ list links at the bottom"
             (prev-entry (cadr (member entry (reverse grc-entry-cache))))
             (summary (or (aget entry 'content t)
                          (aget entry 'summary t)
-                         "No summary provided."))
-            (comments (aget entry 'comments t)))
+                         "No summary provided.")))
         (erase-buffer)
         (mapcar (lambda (lst) (insert (format "%s:  %s\n"
                                          (car lst) (cadr lst))))
@@ -96,11 +85,6 @@ list links at the bottom"
         (let ((before (point)))
           (insert "\n" summary)
 
-          (when comments
-            (insert "\n\nComments: (" (grc-string (length comments)) ")\n")
-            (mapcar 'grc-show-print-comment
-                    (grc-sort-by 'createdTime comments)))
-
           (if (featurep 'w3m)
               (progn
                 (goto-char (point-min))
@@ -119,10 +103,7 @@ list links at the bottom"
                 (fill-region before (point-max))))))
 
         (grc-highlight-keywords (append '("Title:" "Date:" "Source:" "Link:"
-                                          "Comments:" "Next Story:"
-                                          "Previous Story:")
-                                        (mapcar (lambda (c) (aget c 'author))
-                                                comments)
+                                          "Next Story:" "Previous Story:")
                                         (grc-keywords grc-entry-cache)))))
     (setq grc-current-entry (grc-mark-read entry))
     (goto-char (point-min))
@@ -151,21 +132,6 @@ list links at the bottom"
   (interactive "P")
   (funcall (grc-mark-fn "starred") grc-current-entry remove)
   (grc-list-display))
-
-(defun grc-show-share (remove)
-  "Share the current entry.  Use the prefix operator to un-share."
-  (interactive "P")
-  (grc-share grc-current-entry remove)
-  (grc-list-display))
-
-(defun grc-show-add-comment ()
-  "Comment on the current shared entry."
-  (interactive)
-  (if (grc-shared-p grc-current-entry)
-      (progn
-        (grc-add-comment grc-current-entry)
-        (grc-list-display))
-    (error "Not a shared entry")))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
@@ -236,7 +202,6 @@ list links at the bottom"
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "c"               'grc-show-add-comment)
     (define-key map " "               'grc-show-advance-or-show-next-entry)
     (define-key map "?"               'grc-show-help)
     (define-key map "q"               'grc-show-kill-this-buffer)
@@ -245,7 +210,6 @@ list links at the bottom"
     (define-key map "*"               'grc-show-mark-starred)
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
-    (define-key map "!"               'grc-show-share)
     (define-key map "v"               'grc-show-view-external)
     (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
@@ -266,8 +230,6 @@ list links at the bottom"
   p      View the previous entry.
   n      View the next entry.
   *      Star the current entry.  Use the prefix operator to un-star.
-  !      Share the current entry. Use the prefix operator to un-share.
-  c      Add a comment to the current (shared) entry.
   r      Mark the current entry as Read.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.
@@ -278,7 +240,7 @@ list links at the bottom"
   (use-local-map grc-show-mode-map)
   (mapcar (lambda (kw)
             (puthash kw 'grc-show-header-face grc-highlight-face-table))
-          '("Title:" "Date:" "Source:" "Link:" "Comments:"))
+          '("Title:" "Date:" "Source:" "Link:"))
   (mapcar (lambda (kw)
             (puthash kw 'grc-show-context-face grc-highlight-face-table))
           '("Next Story:" "Previous Story:"))
