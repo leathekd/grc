@@ -115,9 +115,8 @@
   (let ((resp (gethash process grc-req-async-responses "")))
     (puthash process (concat resp string) grc-req-async-responses)))
 
-
-;; http://nic.ferrier.me.uk/blog/2011_10/emacs_lisp_is_good_further_reports_suggest
 (defmacro grc-req-with-response (command response-sym &rest sentinel-forms)
+  (grc-auth-ensure-authenticated)
   (let ((buffer-name (generate-new-buffer-name "grc-req")))
     `(let* ((proc (start-process-shell-command "grc-req" ,buffer-name ,command))
             (sentinel-cb
@@ -135,7 +134,7 @@
                              "OK")
                             (t
                              (error "Error: Command: %s\nResponse: %s"
-                                    command
+                                    ,command
                                     (buffer-string)))))))
                      ,@sentinel-forms))))))
        (set-process-sentinel proc sentinel-cb))))

@@ -289,8 +289,8 @@
   (unless (get-buffer grc-list-buffer)
     (grc-list-make-buffer "Fetching entries..."))
   (switch-to-buffer grc-list-buffer)
-  (with-response (grc-req-remote-entries grc-current-state) resp
-   (message "resp %s" resp)
+  (grc-req-with-response
+   (grc-req-remote-entries grc-current-state) resp
    (grc-list-display resp)
    (switch-to-buffer grc-list-buffer)))
 
