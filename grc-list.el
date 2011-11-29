@@ -41,8 +41,8 @@
                  (symbol :tag "Source" 'src-title)))
 
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
-(defvar grc-list-date-col-width 14)
-(defvar grc-list-source-col-width 16)
+(defvar grc-list-date-col-width 11)
+(defvar grc-list-source-col-width 15)
 
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
@@ -52,8 +52,7 @@
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
          (static-width (+ grc-list-date-col-width 2
-                          grc-list-source-col-width 2 2
-                          (length cats)
+                          grc-list-source-col-width 2
                           1))
          (title-width (- (window-width) static-width))
          (title (grc-prepare-text (grc-title-for-printing entry)))
@@ -64,14 +63,11 @@
      (format row-format
              (format-time-string
               (if (> one-week (float-time date))
-                  "%m/%d %l:%M %p"
-                "  %a %l:%M %p")
+                  "%m/%d %H:%M"
+                "  %a %H:%M")
               date)
              (grc-truncate-text source grc-list-source-col-width t)
              (grc-truncate-text title title-width t)))
-
-    (when (< 0 (length cats))
-      (insert (format " (%s)" cats)))
     (when read
       (put-text-property (line-beginning-position) (line-end-position)
                          'face 'grc-read-face))

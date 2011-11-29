@@ -212,19 +212,19 @@
 (defun grc-truncate-text (text &optional max elide)
   "Will truncate text down to max or 20 characters.
 
-  Optional elide will replace the last 3 characters with ..."
+  Optional elide will replace the last character with …"
   (if text
       (let* ((max (or max 20))
              (len (length text))
              (max (if (and elide (< max len))
-                      (- max 3)
+                      (1- max)
                     max))
              (str (replace-regexp-in-string
                    "\\(\\W\\)*$"
                    ""
                    (substring text 0 (if (> max len) len max)))))
         (if (and (< max len) elide)
-            (concat str "...") ;; … ?
+            (concat str "…")
           str))
     ""))
 
