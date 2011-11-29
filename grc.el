@@ -51,6 +51,10 @@
   nil "Group for grc related faces"
   :group 'grc)
 
+(defface grc-read-face '((t (:foreground "dim gray")))
+  "grc face for read items"
+  :group 'grc-faces)
+
 (defcustom grc-enable-hl-line t
   "Turn on hl-line-mode in the grc list buffer"
   :type  'boolean

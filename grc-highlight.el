@@ -89,7 +89,10 @@
   "Search through the file highlighting the given keyword"
   (let ((case-fold-search nil))
     (goto-char (point-min))
-    (while (search-forward kw nil t)
+    (while (and (search-forward kw nil t)
+                (not (member 'grc-read-face
+                             (erc-hl-nicks-ensure-list
+                              (get-text-property (point) 'face)))))
       (let ((start (- (point) (length kw)))
             (end (point)))
         (put-text-property start end

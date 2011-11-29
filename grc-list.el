@@ -47,7 +47,7 @@
 (defun grc-list-print-entry (entry)
   "Takes an entry and formats it into the line that'll appear on the list view"
   (let* ((source (grc-prepare-text (aget entry 'src-title t)))
-         (cats (grc-format-categories entry))
+         (read (member "read" (aget entry 'categories)))
          (date (seconds-to-time (aget entry 'crawl-date t)))
          (one-week (- (float-time (current-time))
                       (* 60 60 24 7)))
@@ -72,6 +72,9 @@
 
     (when (< 0 (length cats))
       (insert (format " (%s)" cats)))
+    (when read
+      (put-text-property (line-beginning-position) (line-end-position)
+                         'face 'grc-read-face))
     (insert "\n")))
 
 (defun grc-list-print-entries (entries)
