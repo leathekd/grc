@@ -104,10 +104,10 @@ list links at the bottom"
 
         (grc-highlight-keywords (append '("Title:" "Date:" "Source:" "Link:"
                                           "Next Story:" "Previous Story:")
-                                        (grc-keywords grc-entry-cache)))))
-    (setq grc-current-entry (grc-mark-read entry))
-    (goto-char (point-min))
-    (switch-to-buffer buffer)
+                                        (grc-keywords grc-entry-cache))))
+      (setq grc-current-entry (grc-mark-read entry))
+      (goto-char (point-min))
+      (switch-to-buffer buffer))
     (grc-list-display)))
 
 (defun grc-show-help ()
