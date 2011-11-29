@@ -257,7 +257,7 @@
     (define-key map (kbd "RET") 'grc-list-show-entry)
     (define-key map "o"         'grc-list-sort)
     (define-key map "v"         'grc-list-view-external)
-    (define-key map "g"         'grc-list-display)
+    (define-key map "g"         'grc)
     map)
   "Keymap for \"grc list\" buffers.")
 (fset 'grc-list-mode-map grc-list-mode-map)
