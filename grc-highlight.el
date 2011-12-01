@@ -89,15 +89,15 @@
   "Search through the file highlighting the given keyword"
   (let ((case-fold-search nil))
     (goto-char (point-min))
-    (while (and (search-forward kw nil t)
-                (not (member 'grc-read-face
-                             (erc-hl-nicks-ensure-list
-                              (get-text-property (point) 'face)))))
+    (while (search-forward kw nil t)
       (let ((start (- (point) (length kw)))
             (end (point)))
-        (put-text-property start end
-                           'face
-                           (grc-highlight-make-face kw))))))
+        (unless (member 'grc-read-face
+                        (erc-hl-nicks-ensure-list
+                         (get-text-property (point) 'face)))
+          (put-text-property start end
+                             'face
+                             (grc-highlight-make-face kw)))))))
 
 (defun grc-highlight-keywords (keywords)
   "Searches for nicknames and highlights them. Uses the first
