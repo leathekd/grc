@@ -116,6 +116,7 @@
     (puthash process (concat resp string) grc-req-async-responses)))
 
 (defmacro grc-req-with-response (command response-sym &rest sentinel-forms)
+  (declare (indent defun))
   (grc-auth-ensure-authenticated)
   (let ((buffer-name (generate-new-buffer-name "grc-req")))
     `(let* ((proc (start-process-shell-command "grc-req" ,buffer-name ,command))
