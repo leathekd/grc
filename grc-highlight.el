@@ -93,7 +93,7 @@
       (let ((start (- (point) (length kw)))
             (end (point)))
         (unless (member 'grc-read-face
-                        (erc-hl-nicks-ensure-list
+                        (grc-list
                          (get-text-property (point) 'face)))
           (put-text-property start end
                              'face
