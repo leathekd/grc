@@ -280,6 +280,7 @@
   ?    Show the help message for the grc list screen
   q    Kill the current buffer."
   (interactive)
+  (setq truncate-lines t)
   (kill-all-local-variables)
   (use-local-map grc-list-mode-map)
   (setq major-mode 'grc-list-mode

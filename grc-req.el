@@ -123,8 +123,8 @@
             (sentinel-cb
              (lambda (process signal)
                (when (string-match "^finished" signal)
-                 (with-current-buffer ,buffer-name
-                   (let ((,response-sym
+                 (let ((,response-sym
+                        (with-current-buffer ,buffer-name
                           (grc-parse-parse-response
                            (cond
                             ((string-match "^{" (buffer-string))
@@ -136,8 +136,9 @@
                             (t
                              (error "Error: Command: %s\nResponse: %s"
                                     ,command
-                                    (buffer-string)))))))
-                     ,@sentinel-forms))))))
+                                    (buffer-string))))))))
+                   (kill-buffer ,buffer-name)
+                   ,@sentinel-forms)))))
        (set-process-sentinel proc sentinel-cb))))
 
 (defun grc-req-curl-command (verb endpoint
