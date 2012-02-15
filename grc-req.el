@@ -77,7 +77,7 @@
 
 (defcustom grc-curl-options
   (concat "--compressed --silent --location --location-trusted "
-          "--connect-timeout 2 --max-time 5 --retry 2")
+          "--connect-timeout 2 --max-time 10 --retry 2")
   "Options to pass to all grc curl requests"
   :group 'grc
   :type 'string)
