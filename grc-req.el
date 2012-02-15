@@ -160,47 +160,6 @@
                 (concat endpoint "&" params)
               endpoint))))
 
-(defun grc-req-do-async-request (cb-fn verb endpoint
-                                       &optional params no-auth raw-response)
-  "Makes the actual async request via curl.  Handles both POST and GET."
-  (unless no-auth (grc-auth-ensure-authenticated))
-  (let* ((endpoint (concat endpoint
-                           "?client=" grc-req-client-name
-                           "&ck=" (grc-string (floor (* 1000000 (float-time))))
-                           "&output=json"))
-         (params (if (listp params) (grc-req-format-params params) params))
-         (process (start-process "grc request"
-                                 nil
-                                 grc-curl-program
-                                 "--compressed"
-                                 "--silent" "--location" "--location-trusted"
-                                 "--header"
-                                 (format "Authorization: OAuth %s"
-                                         (aget grc-auth-access-token 'token))
-                                 verb
-                                 (if (string= "POST" verb)
-                                     (format "-d \"%s\"" params)
-                                   "")
-                                 (if (and (not (equal "" params))
-                                          (string= "GET" verb))
-                                     (concat endpoint "&" params)
-                                   endpoint))))
-    (puthash process cb-fn grc-req-async-cb-fns)
-    (set-process-filter process 'grc-req-process-filter)
-    (set-process-sentinel process 'grc-req-process-sentinel)))
-
-(defun grc-req-async-get-request (cb-fn endpoint
-                                        &optional params no-auth raw-response)
-  "Makes an async request GET to Google.  Takes a callback function that will be
-  called with the parsed response"
-  (grc-req-do-async-request cb-fn "GET" endpoint params no-auth raw-response))
-
-(defun grc-req-async-post-request (cb-fn endpoint params
-                                         &optional no-auth raw-response)
-  "Makes an async request POST to Google.  Takes a callback function that will
-  be called with the parsed response"
-  (grc-req-do-async-request cb-fn "POST" endpoint params no-auth raw-response))
-
 (defun grc-req-do-request (verb endpoint &optional params no-auth raw-response)
   "Makes the actual request via curl.  Handles both POST and GET."
   (unless no-auth (grc-auth-ensure-authenticated))
@@ -312,13 +271,6 @@
      ("i" . ,id)
      ("T" . ,(grc-auth-get-action-token)))))
 
-(defun grc-req-unread-counts ()
-  "Fetch the unread counts for all feeds"
-  (aget (grc-req-get-request
-         grc-req-unread-count-url
-         `(("n"           . ,(grc-string grc-fetch-count))
-           ("all"         . "true")))
-        'unreadcounts t))
 
 (defun grc-req-mark-all-read (&optional src)
   "Mark all items for 'src' as read"
