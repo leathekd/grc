@@ -243,42 +243,42 @@
 (defun grc-req-mark-kept-unread (id feed)
   "Send a request to mark an entry as kept-unread.  Will also remove the read
   category"
-  (grc-req-post-request
-   grc-req-edit-tag-url
-   `(("a" . "user/-/state/com.google/kept-unread")
-     ("r" . "user/-/state/com.google/read")
-     ("s" . ,feed)
-     ("i" . ,id)
-     ("T" . ,(grc-auth-get-action-token)))))
+  (let ((params `(("a" . "user/-/state/com.google/kept-unread")
+                  ("r" . "user/-/state/com.google/read")
+                  ("s" . ,feed)
+                  ("i" . ,id)
+                  ("T" . ,(grc-auth-get-action-token)))))
+    (grc-req-with-response
+      (grc-req-curl-command "POST" grc-req-edit-tag-url params) _ t)))
 
 (defun grc-req-mark-read (id feed)
   "Send a request to mark an entry as read.  Will also remove the kept-unread
   category"
-  (grc-req-post-request
-   grc-req-edit-tag-url
-   `(("r" . "user/-/state/com.google/kept-unread")
-     ("a" . "user/-/state/com.google/read")
-     ("s" . ,feed)
-     ("i" . ,id)
-     ("T" . ,(grc-auth-get-action-token)))))
+  (let ((params `(("r" . "user/-/state/com.google/kept-unread")
+                  ("a" . "user/-/state/com.google/read")
+                  ("s" . ,feed)
+                  ("i" . ,id)
+                  ("T" . ,(grc-auth-get-action-token)))))
+    (grc-req-with-response
+      (grc-req-curl-command "POST" grc-req-edit-tag-url params) _ t)))
 
 (defun grc-req-edit-tag (id feed tag remove-p)
   "Send a request to remove or add a tag (category/label)"
-  (grc-req-post-request
-   grc-req-edit-tag-url
-   `((,(if remove-p "r" "a") . ,(concat "user/-/state/com.google/" tag))
-     ("s" . ,feed)
-     ("i" . ,id)
-     ("T" . ,(grc-auth-get-action-token)))))
-
+  (let ((params
+         `((,(if remove-p "r" "a") . ,(concat "user/-/state/com.google/" tag))
+           ("s" . ,feed)
+           ("i" . ,id)
+           ("T" . ,(grc-auth-get-action-token)))))
+    (grc-req-with-response
+      (grc-req-curl-command "POST" grc-req-edit-tag-url params) _ t)))
 
 (defun grc-req-mark-all-read (&optional src)
   "Mark all items for 'src' as read"
-  (grc-req-post-request
-   "http://www.google.com/reader/api/0/mark-all-as-read"
-   `(("s"  . ,(or src "user/-/state/com.google/reading-list"))
-     ("ts" . ,(floor (* 1000000 (float-time))))
-     ("T"  . ,(grc-auth-get-action-token)))))
+  (let ((url "http://www.google.com/reader/api/0/mark-all-as-read")
+        (params `(("s"  . ,(or src "user/-/state/com.google/reading-list"))
+                  ("ts" . ,(floor (* 1000000 (float-time))))
+                  ("T"  . ,(grc-auth-get-action-token)))))
+    (grc-req-with-response (grc-req-curl-command "POST" url params) _ t)))
 
 (defun grc-req-subscriptions ()
   "Get a list of all subscribed feeds"
