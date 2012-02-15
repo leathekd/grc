@@ -140,14 +140,14 @@
 (defun grc-list-header-line ()
   "Set the header line for the grc-list-buffer"
   (setq header-line-format
-        (format "Google Reader Client -- Viewing: %s (%s)  Sort: %s %s"
+        (format "%s (%s)  Sort: %s %s"
                 (cdr (assoc grc-current-state
                             grc-google-categories))
                 (length grc-entry-cache)
                 (car (rassoc (or grc-current-sort grc-default-sort-column)
                              grc-sort-columns))
                 (if grc-current-sort-reversed
-                    "Descending" "Ascending"))))
+                    "▼" "▲"))))
 
 (defun grc-list-help ()
   "Show the help message for the grc list view"
