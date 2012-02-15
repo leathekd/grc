@@ -48,11 +48,6 @@
           "api/0/subscription/list")
   "URL for retrieving list of subscribed feeds.")
 
-(defvar grc-req-unread-count-url
-  (concat grc-req-base-url
-          "api/0/unread-count")
-  "URL for retrieving unread counts for subscribed feeds.")
-
 (defvar grc-req-preference-set-url
   (concat grc-req-base-url
           "api/0/preference/set")
