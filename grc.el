@@ -255,17 +255,9 @@
         "No title provided."))))
 
 (defun grc-keywords (entries)
-  ;; TODO: too convoluted- simplify
-  "Get all the categoriess across entries, flatten to one list, dedupe, then
-  translate to what the user sees"
-  (let ((categories
-         (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
-                 (delete-dups (grc-flatten
-                               (mapcar (lambda (e) (aget e 'categories t))
-                                       entries))))))
-    (delete-dups
-     (append categories
-             (mapcar (lambda (e) (aget e 'src-title t)) entries)))))
+  "Keywords determines what will be highlighted.  For now this is only the
+  source of the entry."
+  (mapcar (lambda (e) (aget e 'src-title t)) entries))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
