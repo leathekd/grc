@@ -123,20 +123,20 @@
             (sentinel-cb
              (lambda (process signal)
                (when (string-match "^finished" signal)
-                 (let ((,response-sym
-                        (with-current-buffer ,buffer-name
-                          (grc-parse-parse-response
+                 (let* ((json-array-type 'list)
+                        (,response-sym
+                         (with-current-buffer ,buffer-name
                            (cond
                             ((string-match "^{" (buffer-string))
-                             (let ((json-array-type 'list))
-                               (json-read-from-string
-                                (decode-coding-string (buffer-string) 'utf-8))))
+                             (grc-parse-parse-response
+                              (json-read-from-string
+                               (decode-coding-string (buffer-string) 'utf-8))))
                             ((string-match "^OK" (buffer-string))
                              "OK")
                             (t
                              (error "Error: Command: %s\nResponse: %s"
                                     ,command
-                                    (buffer-string))))))))
+                                    (buffer-string)))))))
                    (kill-buffer ,buffer-name)
                    ,@sentinel-forms)))))
        (set-process-sentinel proc sentinel-cb))))
