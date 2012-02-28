@@ -111,6 +111,10 @@
       (goto-char (point-min))
       (forward-line line))))
 
+(defun grc-list-refresh ()
+  (interactive)
+  (grc-list-display grc-entry-cache))
+
 (defun grc-list-incremental-display ()
   "Fetch new entries and add them to the grc-list-buffer"
   (grc-req-incremental-fetch
@@ -190,6 +194,11 @@
   (grc-list-next-entry)
   (grc-list-refresh))
 
+(defun grc-list-send-to-instapaper ()
+  (interactive)
+  (grc-send-to-instapaper (grc-list-get-current-entry))
+  (grc-list-mark-read))
+
 (defun grc-list-mark-starred (remove)
   "Star the current entry.  Use the prefix operator to un-star."
   (interactive "P")
@@ -254,6 +263,7 @@
     (define-key map (kbd "RET") 'grc-list-show-entry)
     (define-key map "o"         'grc-list-sort)
     (define-key map "v"         'grc-list-view-external)
+    (define-key map "l"         'grc-list-send-to-instapaper)
     (define-key map "g"         'grc)
     map)
   "Keymap for \"grc list\" buffers.")

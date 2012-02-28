@@ -186,6 +186,10 @@ list links at the bottom"
       (w3m-external-view-this-url)
     (ffap)))
 
+(defun grc-show-send-to-instapaper ()
+  (interactive)
+  (grc-send-to-instapaper grc-current-entry))
+
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
   (interactive)
@@ -211,6 +215,7 @@ list links at the bottom"
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
     (define-key map "v"               'grc-show-view-external)
+    (define-key map "l"               'grc-show-send-to-instapaper)
     (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
     (define-key map (kbd "<backtab>") 'grc-show-previous-anchor)

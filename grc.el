@@ -65,6 +65,16 @@
   :type 'integer
   :group 'grc)
 
+(defcustom grc-instapaper-username ""
+  ""
+  :group 'grc
+  :type 'string)
+
+(defcustom grc-instapaper-password ""
+  ""
+  :group 'grc
+  :type 'string)
+
 (defvar grc-google-categories
   '(("fresh"                      . "Fresh")
     ("kept-unread"                . "Kept Unread")
@@ -395,6 +405,19 @@
           (browse-url link)
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
+
+(defun grc-send-to-instapaper (entry)
+  (let* ((params (grc-req-format-params
+                  `(("username" . ,grc-instapaper-username)
+                    ("password" . ,grc-instapaper-password)
+                    ("url"      . ,(aget entry 'link t)))))
+         (command (format "%s %s -X POST -d \"%s\" '%s' "
+                          grc-curl-program
+                          grc-curl-options
+                          params
+                          "https://www.instapaper.com/api/add")))
+    (grc-req-with-response command _
+      (message "Sent to Instapaper"))))
 
 (provide 'grc)
 ;;; grc.el ends here
