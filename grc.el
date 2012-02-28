@@ -281,10 +281,11 @@
   (unless (get-buffer grc-list-buffer)
     (grc-list-make-buffer "Fetching entries..."))
   (switch-to-buffer grc-list-buffer)
+  (grc-auth-ensure-authenticated)
   (grc-req-with-response
-   (grc-req-remote-entries grc-current-state) resp
-   (grc-list-display resp)
-   (switch-to-buffer grc-list-buffer)))
+    (grc-req-remote-entries grc-current-state) raw-resp
+    (let ((resp (grc-req-parse-response raw-resp)))
+      (grc-list-display resp))))
 
 ;;;###autoload
 (defun grc-logout ()

@@ -82,58 +82,31 @@
   (format grc-auth-header-format
           (aget grc-auth-access-token 'token)))
 
-(defvar grc-req-async-cb-fns (make-hash-table :test 'equal))
-(defvar grc-req-async-responses (make-hash-table :test 'equal))
-
-(defun grc-req-process-sentinel (process event)
-  "Parses the gathered response and calls the cb-fn with the result when the
-  process is done"
-  (when (string-match "^finished" event)
-    (let ((raw-resp (gethash process grc-req-async-responses)))
-      (funcall
-       (gethash process grc-req-async-cb-fns)
-       (let ((raw-resp
-              (cond ((string-match "^{" raw-resp)
-                     (let ((json-array-type 'list))
-                       (json-read-from-string
-                        (decode-coding-string raw-resp 'utf-8))))
-                    ((string= "" raw-resp)
-                     (error "Error during async grc request."))
-                    (t
-                     (error "Error in grc async request. Cmd: %s\nResponse: %s"
-                            (process-command process) raw-resp)))))
-         (grc-parse-parse-response raw-resp))))
-    (remhash process grc-req-async-cb-fns)))
-
-(defun grc-req-process-filter (process string)
-  "Gathers up the raw response from the request"
-  (let ((resp (gethash process grc-req-async-responses "")))
-    (puthash process (concat resp string) grc-req-async-responses)))
+(defun grc-req-parse-response (raw-resp)
+  (cond
+   ((string-match "^{" raw-resp)
+    (grc-parse-parse-response
+     (let ((json-array-type 'list))
+       (json-read-from-string
+        (decode-coding-string raw-resp 'utf-8)))))
+   ((string-match "^OK" raw-resp)
+    "OK")
+   (t nil)))
 
 (defmacro grc-req-with-response (command response-sym &rest sentinel-forms)
   (declare (indent defun))
-  (grc-auth-ensure-authenticated)
   (let ((buffer-name (generate-new-buffer-name "grc-req")))
     `(let* ((proc (start-process-shell-command "grc-req" ,buffer-name ,command))
             (sentinel-cb
-             (lambda (process signal)
-               (when (string-match "^finished" signal)
-                 (let* ((json-array-type 'list)
-                        (,response-sym
+             (apply-partially
+              (lambda (cmd process signal)
+                (when (string-match "^finished" signal)
+                  (let ((,response-sym
                          (with-current-buffer ,buffer-name
-                           (cond
-                            ((string-match "^{" (buffer-string))
-                             (grc-parse-parse-response
-                              (json-read-from-string
-                               (decode-coding-string (buffer-string) 'utf-8))))
-                            ((string-match "^OK" (buffer-string))
-                             "OK")
-                            (t
-                             (error "Error: Command: %s\nResponse: %s"
-                                    ,command
-                                    (buffer-string)))))))
-                   (kill-buffer ,buffer-name)
-                   ,@sentinel-forms)))))
+                           (buffer-string))))
+                    (kill-buffer ,buffer-name)
+                    ,@sentinel-forms)))
+              ,command)))
        (set-process-sentinel proc sentinel-cb))))
 
 (defun grc-req-curl-command (verb endpoint
@@ -208,7 +181,9 @@
 
 (defun grc-req-format-params (params)
   "Convert an alist of params into an & delimeted string suitable for curl"
-  (mapconcat (lambda (p) (concat (car p) "=" (url-hexify-string (cdr p))))
+  (mapconcat (lambda (p) (concat (car p)
+                            "="
+                            (url-hexify-string (grc-string (cdr p)))))
              params "&"))
 
 (defun grc-req-incremental-fetch (cb-fn)
