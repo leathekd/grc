@@ -103,10 +103,11 @@
     (let ((inhibit-read-only t)
           (line (1- (line-number-at-pos))))
       (erase-buffer)
-      (when entries
-        (setq grc-entry-cache entries))
+      (setq grc-entry-cache entries)
       (grc-list-header-line)
-      (grc-list-print-entries grc-entry-cache)
+      (if (< 0 (length grc-entry-cache))
+          (grc-list-print-entries grc-entry-cache)
+        (insert "No unread entries."))
       (goto-char (point-min))
       (forward-line line))))
 
@@ -158,7 +159,7 @@
   "Open the current rss entry in the default emacs browser"
   (interactive)
   (grc-view-external (grc-list-get-current-entry))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-list-mark-fn (tag)
   "Returns a function that will add a category to the entry under the cursor,
@@ -166,28 +167,28 @@
   `(lambda (&optional remove)
      (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry) remove)
      (grc-list-next-entry)
-     (grc-list-display)))
+     (grc-list-refresh)))
 
 (defun grc-list-mark-read ()
   "Mark the current entry as Read.  Use the prefix operator to unmark."
   (interactive)
   (grc-mark-read (grc-list-get-current-entry))
   (grc-list-next-entry)
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-list-mark-read-and-remove ()
   "Mark the current entry as Read and remove it immediately from the list."
   (interactive)
   (grc-mark-read (grc-list-get-current-entry))
   (setq grc-entry-cache (delete (grc-list-get-current-entry) grc-entry-cache))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-list-mark-kept-unread ()
   "Mark the current entry as Kept Unread.  Use the prefix operator to unmark."
   (interactive)
   (grc-mark-kept-unread (grc-list-get-current-entry))
   (grc-list-next-entry)
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-list-mark-starred (remove)
   "Star the current entry.  Use the prefix operator to un-star."
@@ -212,7 +213,7 @@
             (or items grc-entry-cache)))
   (grc-list-display grc-entry-cache)
   (goto-char (point-min))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-list-show-entry ()
   "View the current entry."
@@ -237,7 +238,7 @@
       (setq grc-current-sort next-sort))
     (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
                                        grc-current-sort-reversed 'title))
-    (grc-list-display)))
+    (grc-list-refresh)))
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))

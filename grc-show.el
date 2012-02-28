@@ -108,7 +108,7 @@ list links at the bottom"
       (setq grc-current-entry (grc-mark-read entry))
       (goto-char (point-min))
       (switch-to-buffer buffer))
-    (grc-list-display)))
+    (grc-list-refresh)))
 
 (defun grc-show-help ()
   "Show the help message for the grc show view"
@@ -119,19 +119,19 @@ list links at the bottom"
   "Mark the current entry as Keep Unread."
   (interactive)
   (setq grc-current-entry (grc-mark-kept-unread grc-current-entry))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-mark-read ()
   "Mark the current entry as Read"
   (interactive)
   (setq grc-current-entry (grc-mark-read grc-current-entry))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-mark-starred (remove)
   "Star the current entry."
   (interactive "P")
   (funcall (grc-mark-fn "starred") grc-current-entry remove)
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
@@ -148,7 +148,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-display)
+            (grc-list-refresh)
             (forward-line)))
       (error "No more entries"))))
 
@@ -160,7 +160,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-display)
+            (grc-list-refresh)
             (forward-line -1)))
       (error "No previous entries"))))
 
