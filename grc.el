@@ -65,6 +65,16 @@
   :type 'integer
   :group 'grc)
 
+(defcustom grc-instapaper-username ""
+  ""
+  :group 'grc
+  :type 'string)
+
+(defcustom grc-instapaper-password ""
+  ""
+  :group 'grc
+  :type 'string)
+
 (defvar grc-google-categories
   '(("fresh"                      . "Fresh")
     ("kept-unread"                . "Kept Unread")
@@ -255,17 +265,9 @@
         "No title provided."))))
 
 (defun grc-keywords (entries)
-  ;; TODO: too convoluted- simplify
-  "Get all the categoriess across entries, flatten to one list, dedupe, then
-  translate to what the user sees"
-  (let ((categories
-         (mapcar (lambda (c) (or (aget grc-google-categories c t) c))
-                 (delete-dups (grc-flatten
-                               (mapcar (lambda (e) (aget e 'categories t))
-                                       entries))))))
-    (delete-dups
-     (append categories
-             (mapcar (lambda (e) (aget e 'src-title t)) entries)))))
+  "Keywords determines what will be highlighted.  For now this is only the
+  source of the entry."
+  (mapcar (lambda (e) (aget e 'src-title t)) entries))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."
@@ -289,11 +291,11 @@
   (unless (get-buffer grc-list-buffer)
     (grc-list-make-buffer "Fetching entries..."))
   (switch-to-buffer grc-list-buffer)
-  (grc-req-remote-entries
-   (lambda (resp)
-     (grc-list-display resp)
-     (switch-to-buffer grc-list-buffer))
-   grc-current-state))
+  (grc-auth-ensure-authenticated)
+  (grc-req-with-response
+    (grc-req-remote-entries grc-current-state) raw-resp
+    (let ((resp (grc-req-parse-response raw-resp)))
+      (grc-list-display resp))))
 
 ;;;###autoload
 (defun grc-logout ()
@@ -403,6 +405,19 @@
           (browse-url link)
           (grc-mark-read entry))
       (message "Unable to view this entry"))))
+
+(defun grc-send-to-instapaper (entry)
+  (let* ((params (grc-req-format-params
+                  `(("username" . ,grc-instapaper-username)
+                    ("password" . ,grc-instapaper-password)
+                    ("url"      . ,(aget entry 'link t)))))
+         (command (format "%s %s -X POST -d \"%s\" '%s' "
+                          grc-curl-program
+                          grc-curl-options
+                          params
+                          "https://www.instapaper.com/api/add")))
+    (grc-req-with-response command _
+      (message "Sent to Instapaper"))))
 
 (provide 'grc)
 ;;; grc.el ends here

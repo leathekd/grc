@@ -108,7 +108,7 @@ list links at the bottom"
       (setq grc-current-entry (grc-mark-read entry))
       (goto-char (point-min))
       (switch-to-buffer buffer))
-    (grc-list-display)))
+    (grc-list-refresh)))
 
 (defun grc-show-help ()
   "Show the help message for the grc show view"
@@ -119,19 +119,19 @@ list links at the bottom"
   "Mark the current entry as Keep Unread."
   (interactive)
   (setq grc-current-entry (grc-mark-kept-unread grc-current-entry))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-mark-read ()
   "Mark the current entry as Read"
   (interactive)
   (setq grc-current-entry (grc-mark-read grc-current-entry))
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-mark-starred (remove)
   "Star the current entry."
   (interactive "P")
   (funcall (grc-mark-fn "starred") grc-current-entry remove)
-  (grc-list-display))
+  (grc-list-refresh))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
@@ -148,7 +148,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-display)
+            (grc-list-refresh)
             (forward-line)))
       (error "No more entries"))))
 
@@ -160,7 +160,7 @@ list links at the bottom"
         (progn
           (grc-show-entry entry)
           (with-current-buffer grc-list-buffer
-            (grc-list-display)
+            (grc-list-refresh)
             (forward-line -1)))
       (error "No previous entries"))))
 
@@ -185,6 +185,10 @@ list links at the bottom"
   (if (featurep 'w3m)
       (w3m-external-view-this-url)
     (ffap)))
+
+(defun grc-show-send-to-instapaper ()
+  (interactive)
+  (grc-send-to-instapaper grc-current-entry))
 
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
@@ -211,6 +215,7 @@ list links at the bottom"
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
     (define-key map "v"               'grc-show-view-external)
+    (define-key map "l"               'grc-show-send-to-instapaper)
     (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
     (define-key map (kbd "<backtab>") 'grc-show-previous-anchor)
