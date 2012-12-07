@@ -123,7 +123,8 @@
                (output . "json"))))))
 
 (defun grc-req-unread-entries (callback &optional limit since)
-  (let* (;; the number of items to return
+  (let* ((limit (or limit 100))
+         ;; the number of items to return
          (params (when limit
                    `(("n" . ,(format "%s" limit)))))
          ;; the oldest in which I'm interested
