@@ -1,6 +1,6 @@
 ;;; grc-auth.el --- Google Reader Mode for Emacs
 ;;
-;; Copyright (c) 2011 David Leatherman
+;; Copyright (c) 2012 David Leatherman
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
 ;; URL: http://www.github.com/leathekd/grc
@@ -32,154 +32,73 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defcustom grc-auth-client-id ""
-  "The client id provided by Google"
-  :group 'grc
-  :type 'string)
+(defvar grc-auth-url "https://accounts.google.com/o/oauth2/auth")
+(defvar grc-token-url "https://accounts.google.com/o/oauth2/token")
+(defvar grc-resource-url "https://www.google.com/reader/api")
+(defvar grc-action-token-url "https://www.google.com/reader/api/0/token")
+(defvar grc-token-file (concat user-emacs-directory "grc.plstore"))
+(defvar grc-token nil)
 
-(defcustom grc-auth-client-secret ""
-  "The client secret provided by Google"
-  :group 'grc
-  :type 'string)
+(defun grc-auth ()
+  (flet ((plstore-progress-callback-function (&rest _))) ;; No messages, please
+    (let* ((plstore (plstore-open grc-token-file))
+           (id "grc-auth-client")
+           (plist (cdr (plstore-get plstore id)))
+           (client-id (plist-get plist :client-id))
+           (client-secret (plist-get plist :client-secret)))
+      (or plist
+          (let*
+              ((client-id (read-string "Enter your Google OAuth2 client id: "))
+               (client-secret (read-string
+                               "Enter your Google OAuth2 client secret: "))
+               (token (oauth2-auth grc-auth-url grc-token-url
+                                   client-id client-secret grc-resource-url)))
+            (if (oauth2-token-access-token token)
+                (let ((plist `(:client-id
+                               ,client-id
+                               :client-secret
+                               ,client-secret
+                               :refresh-token
+                               ,(oauth2-token-refresh-token token))))
+                  (plstore-put plstore id nil plist)
+                  (plstore-save plstore)
+                  plist)
+              (error "Auth failed. client id or secret may be wrong")))))))
 
-(defcustom grc-auth-refresh-token-file "~/.grc-refresh-token"
-  "The file where grc will cache the Google Oauth refresh token"
-  :group 'grc
-  :type 'file)
+(defun grc-refresh-access-token (token)
+  "Refresh the access token from Google.
+  TOKEN refers to the plist returned by grc-auth"
+  (plist-put
+   token :access-token
+   (grapnel-retrieve-url-sync
+    grc-token-url
+    `((success . (lambda (response headers)
+                   (cdr (assoc 'access_token
+                               (json-read-from-string response)))))
+      (failure . (lambda (response headers)
+                   (error "Failed with: %s for %s"
+                          (cadr (assoc "response-code" headers))
+                          ,grc-token-url))))
+    "POST" nil
+    `(("client_id" . ,(plist-get token :client-id))
+      ("client_secret" . ,(plist-get token :client-secret))
+      ("refresh_token" . ,(plist-get token :refresh-token))
+      ("grant_type" . "refresh_token")))))
 
-(defvar grc-auth-authorization-code-url
-  (concat "https://accounts.google.com/o/oauth2/auth?"
-          "client_id=%s"
-          "&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
-          "&scope=http://www.google.com/reader/api"
-          "&response_type=code"))
-
-(defvar grc-auth-access-token nil)
-(defvar grc-auth-refresh-token nil)
-(defvar grc-auth-action-token nil)
-
-(defun grc-auth-verify-config ()
-  "Verify that the client id and client secret are set"
-  (when (or (and (string= "" grc-auth-client-id)
-                   (string= "" grc-auth-client-secret))
-              (and (null grc-auth-client-id)
-                   (null grc-auth-client-secret)))
-    (error (concat "Missing Client Id and/or Client Secret."
-                   "See https://github.com/leathekd/grc for details."))))
-
-(defun grc-auth-get-auth-code ()
-  "Opens the browser to get the authorization code from Google."
-  (grc-auth-verify-config)
-  (browse-url (format grc-auth-authorization-code-url grc-auth-client-id))
-  (read-from-minibuffer "Authorization Code: "))
-
-(defun grc-auth-save-refresh-token (refresh-token)
-  "Saves the refresh token to grc-auth-refresh-token-file"
-  (with-current-buffer (get-buffer-create "*grc refresh token*")
-    (erase-buffer)
-    (insert refresh-token)
-    (write-region (point-min) (point-max) grc-auth-refresh-token-file)
-    (kill-buffer (current-buffer))))
-
-(defun grc-auth-restore-refresh-token ()
-  "Reads in the refresh token from grc-auth-refresh-token-file"
-  (when (and (file-exists-p grc-auth-refresh-token-file)
-             (< 0 (nth 7 (file-attributes grc-auth-refresh-token-file))))
-    (with-current-buffer (find-file-noselect grc-auth-refresh-token-file t)
-      (setq grc-auth-refresh-token
-            (buffer-substring-no-properties (point-min) (point-max)))
-      (kill-buffer (current-buffer)))
-    grc-auth-refresh-token))
-
-(defun grc-auth-set-access-token (resp)
-  "Caches the short-lived access token from the server response"
-  (setq grc-auth-access-token
-        `((token   . ,(aget resp 'access_token t))
-          (expires . ,(- (+ (aget resp 'expires_in)
-                            (float-time))
-                         300)))))
-
-(defun grc-auth-get-access-token ()
-  "Gets the token value from the saved access token alist"
-  (aget grc-auth-access-token 'token))
-
-(defun grc-auth-set-refresh-token (resp)
-  "Caches and saves the refresh token from the server response"
-  (setq grc-auth-refresh-token (aget resp 'refresh_token))
-  (grc-auth-save-refresh-token (aget resp 'refresh_token)))
-
-(defun grc-auth-request-refresh-token ()
-  "Make the request to Google to retrieve the refresh token"
-  (grc-auth-verify-config)
-  (let* ((auth-code (grc-auth-get-auth-code))
-         (resp (grc-req-post-request
-                "https://accounts.google.com/o/oauth2/token"
-                `(("client_id"     . ,grc-auth-client-id)
-                  ("client_secret" . ,grc-auth-client-secret)
-                  ("code"          . ,auth-code)
-                  ("redirect_uri"  . "urn:ietf:wg:oauth:2.0:oob")
-                  ("grant_type"    . "authorization_code"))
-                t)))
-    ;; TODO: handle errors
-    (grc-auth-set-access-token resp)
-    (grc-auth-set-refresh-token resp)))
-
-(defun grc-auth-request-action-token ()
-  "Fetch the action token, this is the T attribute in many requests"
-  `((token   . ,(grc-req-get-request
-                 (concat grc-req-base-url "api/0/token")
-                 nil nil t))
-    (expires . ,(+ (* 60 25) (float-time)))))
-
-(defun grc-auth-set-action-token ()
-  "Cache the token from the action token alist"
-  (setq grc-auth-action-token (grc-auth-request-action-token)))
-
-(defun grc-auth-get-action-token ()
-  "Return or refresh (based on the expiry timestamp) the action token"
-  (when (or (null grc-auth-action-token)
-            (<= (aget grc-auth-action-token 'expires) (floor (float-time))))
-    (grc-auth-set-action-token))
-  (aget grc-auth-action-token 'token t))
-
-(defun grc-auth-get-refresh-token ()
-  "Return the refresh token from the file or fetch it if the file doesn't exist"
-  (or grc-auth-refresh-token
-      (grc-auth-restore-refresh-token)
-      (grc-auth-request-refresh-token)))
-
-(defun grc-auth-re-authenticate ()
-  "Get the refresh and access tokens as needed based on expiry"
-  (let ((refresh-token (grc-auth-get-refresh-token)))
-    ;; on first call, get-refresh-token will set everything
-    (if (and grc-auth-access-token
-             (<= (floor (float-time)) (aget grc-auth-access-token 'expires)))
-        grc-auth-access-token
-      (grc-auth-set-access-token
-       (grc-req-post-request
-        "https://accounts.google.com/o/oauth2/token"
-        (grc-req-format-params
-         `(("client_id"     . ,grc-auth-client-id)
-           ("client_secret" . ,grc-auth-client-secret)
-           ("refresh_token" . ,refresh-token)
-           ("grant_type"    . "refresh_token")))
-        t)))))
-
-(defun grc-auth-ensure-authenticated ()
-  "Make sure that all of the tokens are available for requests"
-  (if (or (null grc-auth-access-token)
-          (<= (floor (aget grc-auth-access-token 'expires))
-              (floor (float-time))))
-      (grc-auth-re-authenticate)
-    grc-auth-access-token))
-
-(defun grc-auth-logout ()
-  "Scrub the cached variables and delete the refresh token from disk"
-  (when (file-exists-p grc-auth-refresh-token-file)
-    (delete-file grc-auth-refresh-token-file))
-  (setq grc-auth-access-token nil)
-  (setq grc-auth-refresh-token nil)
-  (setq grc-auth-action-token nil))
+(defun grc-refresh-action-token (token)
+  "Refresh the action token from Google.
+  TOKEN refers to the plist returned by grc-auth"
+  (plist-put
+   token :action-token
+   (grapnel-retrieve-url-sync
+    grc-action-token-url
+    `((success . (lambda (response headers) response))
+      (failure . (lambda (response headers)
+                   (error "Failed with: %s for %s"
+                          (cadr (assoc "response-code" headers))
+                          ,grc-action-token-url))))
+    nil nil nil
+    `(("Authorization" . ,(concat "OAuth " (plist-get token :access-token)))))))
 
 (provide 'grc-auth)
 ;;; grc-auth.el ends here
