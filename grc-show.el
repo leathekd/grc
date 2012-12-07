@@ -30,6 +30,7 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+;; TODO- add light colors
 (defface grc-show-header-face
   '((t :foreground "green" :bold t))
   "Face used for displaying header names."
@@ -39,6 +40,11 @@
   '((t (:foreground "DeepSkyBlue1" :bold t)))
   "Face used for displaying next/previous story headers."
   :group 'grc-faces)
+
+(defcustom grc-use-w3m t
+  "Use w3m to render the entries."
+  :group 'grc
+  :type 'boolean)
 
 (defcustom grc-use-anchor-annotations t
   "When w3m is not available, render links inline or add an annotation and
@@ -85,7 +91,8 @@ list links at the bottom"
         (let ((before (point)))
           (insert "\n" summary)
 
-          (if (featurep 'w3m)
+          (if (and (featurep 'w3m)
+                   grc-use-w3m)
               (progn
                 (goto-char (point-min))
                 (grc-replace-string "\n" "<br />")
@@ -182,7 +189,8 @@ list links at the bottom"
 (defun grc-show-external-view-url ()
   "Load the URL/anchor under point in an external browser."
   (interactive)
-  (if (featurep 'w3m)
+  (if (and (featurep 'w3m)
+           grc-use-w3m)
       (w3m-external-view-this-url)
     (ffap)))
 
@@ -193,14 +201,16 @@ list links at the bottom"
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
   (interactive)
-  (if (featurep 'w3m)
+  (if (and (featurep 'w3m)
+           grc-use-w3m)
       (w3m-next-anchor)
-    (ffap-next-guess)))
+    (forward-button 1 t)))
 
 (defun grc-show-previous-anchor ()
   "Move the point to the previous anchor."
   (interactive)
-  (if (featurep 'w3m)
+  (if (and (featurep 'w3m)
+           grc-use-w3m)
       (w3m-previous-anchor)
     (ffap-next-guess t)))
 
