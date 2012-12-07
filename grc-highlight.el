@@ -32,7 +32,7 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defface grc-highlight-nick-base-face
+(defface grc-highlight-base-face
   '((t nil))
   "Base face used for highlighting keywords in grc. (Before the keyword
   color is added)"
@@ -79,9 +79,9 @@
   "Create and cache a new face for the given word"
   (or (gethash word grc-highlight-face-table)
       (let ((color (grc-highlight-color-for-word word))
-            (new-kw-face
-             (make-symbol (concat "grc-highlight-nick-" word "-face"))))
-        (copy-face 'grc-highlight-nick-base-face new-kw-face)
+            (new-kw-face (make-symbol (concat "grc-highlight-"
+                                              word "-face"))))
+        (copy-face 'grc-highlight-base-face new-kw-face)
         (set-face-foreground new-kw-face color)
         (puthash word new-kw-face grc-highlight-face-table))))
 
