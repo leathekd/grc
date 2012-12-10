@@ -64,6 +64,11 @@
 
 (defvar grc-req-reading-list-url (grc-req-stream-url "reading-list"))
 
+(defvar grc-req-curl-options (concat "--compressed --silent"
+                                     " --location --location-trusted"
+                                     " --connect-timeout 2 --max-time 10"
+                                     " --retry 1"))
+
 (defun grc-req-stream-url (&optional state)
   "Get the url for Google Reader entries, optionally limited to a specified
   state- e.g., kept-unread"
@@ -96,34 +101,49 @@
        (url-hexify-string (format "%s" p)))))
    params "&"))
 
-(defun grc-req-request (url callback &optional method params retryp)
+(defun grc-req-request (url callback &optional
+                            method params post-body headers retryp)
   (setq grc-token (or grc-token (grc-auth)))
-  (let ((failure-cb (lambda (response headers)
-                      ;; try reauthenticating
-                      (if (cdr (assoc "X-Reader-Google-Bad-Token" headers))
-                          (setq grc-token (grc-refresh-action-token grc-token))
-                        (setq grc-token (grc-refresh-access-token grc-token)))
-                      (if retryp
-                          (error "Failed with: %s for %s"
-                                 (cadr (assoc "response-code" headers))
-                                 url)
-                        (grc-req-request url callback method params t)))))
+  (let ((grapnel-options grc-req-curl-options)
+        (failure-cb
+         (lambda (retryp resp resp-hdrs)
+           ;; try reauthenticating
+           (if retryp
+               (error "Failed with: %s for %s"
+                      (cadr (assoc "response-code" resp-hdrs))
+                      url)
+             (progn
+               (grc-refresh-access-token
+                grc-token
+                (lambda () (grc-req-request url callback method
+                                       params post-body headers t)))
+               (when (cdr (assoc "X-Reader-Google-Bad-Token" resp-hdrs))
+                 (grc-refresh-action-token
+                  grc-token
+                  (lambda ()
+                    (grc-req-request url callback method
+                                     params post-body headers t)))))))))
     (grapnel-retrieve-url
      url
      `((success . ,callback)
-       (failure . ,failure-cb)
-       (error . (lambda (response) (error "Error: %s" response))))
+       (failure . ,(apply-partially failure-cb retryp))
+       (error . (lambda (resp exit-code) (error "Error: %s %s"
+                                           response exit-code))))
      method
      (append (or params '())
-             `((access_token . ,(plist-get grc-token :access-token))
-               ("T" . ,(plist-get grc-token :action-token))
+             `(("T" . ,(plist-get grc-token :action-token))
                (client . ,grc-req-client-name)
                (ck . ,(grc-string (floor
                                    (* 1000000 (float-time)))))
-               (output . "json"))))))
+               (output . "json")))
+     post-body
+     (append
+      `(("Authorization" . ,(format "OAuth %s"
+                                    (plist-get grc-token :access-token))))
+      headers))))
 
 (defun grc-req-unread-entries (callback &optional limit since)
-  (let* ((limit (or limit 100))
+  (let* ((limit (or limit 50))
          ;; the number of items to return
          (params (when limit
                    `(("n" . ,(format "%s" limit)))))
@@ -141,11 +161,13 @@
                         ("r" . "n"))))))
 
 (defun grc-req-mark (ids feeds params)
-  (grc-req-request
-   grc-req-edit-item-url '(lambda (&rest x)) "POST"
-   (append params
-           (mapcar (lambda (p i) (cons `("i" . ,i) p)) ids)
-           (mapcar (lambda (p s) (cons `("s" . ,s) p)) feeds))))
+  (let ((params (append params
+                        (mapcar (lambda (i) `("i" . ,i)) ids)
+                        (mapcar (lambda (s) `("s" . ,s)) feeds))))
+    (grc-req-request grc-req-edit-tag-url '(lambda (&rest x))
+                     "POST" nil params
+                     (list '("Content-Type" .
+                             "application/x-www-form-urlencoded")))))
 
 (defun grc-req-mark-kept-unread (ids feeds)
   "Send a request to mark an entry as kept-unread.  Will also remove the read

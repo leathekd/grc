@@ -4,7 +4,7 @@
 ;;
 ;; Author: David Leatherman <leathekd@gmail.com>
 ;; URL: http://www.github.com/leathekd/grc
-;; Version: 0.1.0
+;; Version: 1.0.0
 
 ;; This file is not part of GNU Emacs.
 
@@ -132,7 +132,8 @@
   "Reduces multiple blank lines down to one"
   (goto-char (point-min))
   (grc-replace-regexp "^\n+" "\n")
-  (when (equal "\n" (buffer-substring (point-min) (1+ (point-min))))
+  (when (and (> (point-max) (point-min))
+             (equal "\n" (buffer-substring (point-min) (1+ (point-min)))))
     (goto-char (point-min))
     (delete-char 1)))
 
@@ -191,11 +192,37 @@
                 (insert "[" (prin1-to-string n) "] " l "\n")
                 (+ 1 n)) links :initial-value 1))))
 
+(defun grc-prepare-title (title)
+  (with-temp-buffer
+    (insert title)
+    (when (featurep 'w3m)
+      (w3m-decode-entities))
+    (goto-char (point-min))
+    (html2text)
+    (buffer-string)))
+
 (defun grc-clean-buffer ()
   "Runs grc-clean-text over the entire buffer"
   (let ((cleaned (grc-clean-text (buffer-string))))
     (erase-buffer)
     (insert cleaned)))
+
+(defun grc-button-browse-url (overlay)
+  (browse-url-at-point))
+
+(define-button-type 'grc-link-button
+  'follow-link t
+  'face 'link
+  'action #'grc-button-browse-url)
+
+(defun grc-buttonfiy-links ()
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward thing-at-point-url-regexp nil t)
+      (make-button (match-beginning 0)
+                   (match-end 0)
+                   'url (buffer-substring-no-properties (match-beginning 0) (match-end 0))
+                   'type 'grc-link-button))))
 
 (defun grc-clean-text (text &optional skip-anchor-annotations)
   "Meant for entry text, will footnote links and strip HTML"
@@ -206,10 +233,13 @@
         (w3m-decode-entities))
       (goto-char (point-min))
       (unless skip-anchor-annotations
-        (grc-footnote-anchors grc-use-anchor-annotations))
+        (grc-footnote-anchors grc-use-anchor-annotations)
+        (grc-buttonfiy-links))
 
       (goto-char (point-min))
       (grc-replace-regexp "<br.*?>" "\n")
+      (goto-char (point-min))
+      (grc-replace-regexp "</.?p>" "\n")
       (goto-char (point-min))
       (grc-strip-html)
       (buffer-substring (point-min) (point-max)))))
@@ -284,25 +314,17 @@
 (defun grc (&optional state)
   "Display or refresh the grc reading list.  Main entry function."
   (interactive "P")
-  (grc-auth-verify-config)
   (setq grc-current-state (if (and state (interactive-p))
                               (grc-read-state "State: ")
                             grc-current-state))
-  (unless (get-buffer grc-list-buffer)
-    (grc-list-make-buffer "Fetching entries..."))
-  (switch-to-buffer grc-list-buffer)
-  (grc-auth-ensure-authenticated)
-  (grc-req-with-response
-    (grc-req-remote-entries grc-current-state) raw-resp
-    (let ((resp (grc-req-parse-response raw-resp)))
-      (grc-list-display resp))))
-
-;;;###autoload
-(defun grc-logout ()
-  "Logout and delete the refresh token.  This will force going through OAuth
-  again"
-  (interactive)
-  (grc-auth-logout))
+  (if (get-buffer grc-list-buffer)
+      (switch-to-buffer grc-list-buffer)
+    (progn (grc-list-make-buffer "Fetching entries...")
+           (switch-to-buffer grc-list-buffer)
+           (grc-req-unread-entries
+            '(lambda (response headers)
+               (let ((response (grc-req-parse-response response)))
+                 (grc-list-display response)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions
@@ -323,101 +345,39 @@
         (set-buffer-modified-p nil)
         (view-buffer (current-buffer) 'kill-buffer-if-not-modified)))))
 
-(defun grc-entry-index (entry)
-  "Get the index of the given entry from the entry cache"
-  (- (length grc-entry-cache)
-     (length (member entry grc-entry-cache))))
-
-(defun grc-add-category (entry category)
-  "Adds a category to the categories list inside the entry"
-  (let ((mem (member entry grc-entry-cache)))
-    (when (null (member category (aget entry 'categories t)))
-      (aput 'entry 'categories
-            (cons category (aget entry 'categories t))))
-    (setcar mem entry)
-    entry))
-
-(defun grc-remove-category (entry category)
-  "Removes a category from the categories list inside the entry"
-  (let ((mem (member entry grc-entry-cache)))
-    (when (member category (aget entry 'categories t))
-      (aput 'entry 'categories
-            (delete category (aget entry 'categories t))))
-    (setcar mem entry)
-    entry))
-
-(defun grc-mark-fn (tag)
-  "Returns a function that will add/remove a category from an entry.
-  This function will make a remote call."
-  `(lambda (entry &optional remove)
-     (let ((mem (member ,tag (aget entry 'categories))))
-       (cond
-        ((and mem (null remove)) entry)
-        ((and (null mem) remove) entry)
-        (t (condition-case err
-               (progn
-                 (grc-req-edit-tag (aget entry 'id) (aget entry 'src-id) ,tag
-                                   remove)
-                 (if (null remove)
-                     (grc-add-category entry ,tag)
-                   (grc-remove-category entry ,tag)))
-             (error (message "There was a problem marking the entry as read: %s"
-                             err))))))))
-
-(defun grc-mark-read (entry)
+(defun grc-mark-read (entries)
   "Marks the entry as read on Google Reader"
-  (let* ((cats (aget entry 'categories))
-         (read (member "read" cats))
-         (kept-unread (member "kept-unread" cats)))
-    (if (not read)
-        (progn
-          (grc-req-mark-read (aget entry 'id) (aget entry 'src-id))
-          (let ((entry (grc-add-category entry "read")))
-            (if kept-unread
-                (grc-remove-category entry "kept-unread")
-              entry)))
-      entry)))
+  (grc-req-mark-read
+   (mapcar (lambda (i) (cdr (assoc 'id i))) entries)
+   (mapcar (lambda (i) (cdr (assoc 'src-id i))) entries)))
 
-(defun grc-mark-kept-unread (entry)
+(defun grc-mark-kept (entries)
   "Marks the entry as kept unread on Google Reader"
-  (let* ((cats (aget entry 'categories))
-         (read (member "read" cats))
-         (kept-unread (member "kept-unread" cats)))
-    (if (not kept-unread)
-        (progn
-          (grc-req-mark-kept-unread (aget entry 'id) (aget entry 'src-id))
-          (let ((entry (grc-add-category entry "kept-unread")))
-            (if read
-                (grc-remove-category entry "read")
-              entry)))
-      entry)))
+  (grc-req-mark-kept-unread
+   (mapcar (lambda (i) (cdr (assoc 'id i))) entries)
+   (mapcar (lambda (i) (cdr (assoc 'src-id i))) entries)))
 
-(defun grc-mark-starred (entry &optional remove)
+(defun grc-mark-starred (entries &optional remove-p)
   "Marks the entry as starred on Google Reader"
-  (funcall (grc-mark-fn "starred") entry remove))
+  (grc-req-mark-kept-unread
+   (mapcar (lambda (i) (cdr (assoc 'id i))) entries)
+   (mapcar (lambda (i) (cdr (assoc 'src-id i))) entries)
+   remove-p))
 
 (defun grc-view-external (entry)
   "Open the current rss entry in the default emacs browser"
   (interactive)
-  (let ((link (aget entry 'link t)))
-    (if link
-        (progn
-          (browse-url link)
-          (grc-mark-read entry))
-      (message "Unable to view this entry"))))
+  (let ((link (cdr (assoc 'link entry))))
+    (browse-url link)
+    (grc-mark-read (list entry))))
 
-(defun grc-send-to-instapaper (entry)
-  (let* ((params (grc-req-format-params
-                  `(("username" . ,grc-instapaper-username)
-                    ("password" . ,grc-instapaper-password)
-                    ("url"      . ,(aget entry 'link t)))))
-         (command (format "%s %s -X POST -d \"%s\" '%s' "
-                          grc-curl-program
-                          grc-curl-options
-                          params
-                          "https://www.instapaper.com/api/add")))
-    (grc-req-with-response command _
-      (message "Sent to Instapaper"))))
+(defun grc-send-to-instapaper (entries)
+  (dolist (entry (grc-list entries))
+    (grapnel-retrieve-url "https://www.instapaper.com/api/add"
+                          '((complete . (message "Sent to Instapaper")))
+                          `(("username" . ,grc-instapaper-username)
+                            ("password" . ,grc-instapaper-password)
+                            ("url"      . ,(aget entry 'link t))))))
 
 (provide 'grc)
 ;;; grc.el ends here

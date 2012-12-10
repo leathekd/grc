@@ -30,246 +30,256 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defvar grc-sort-columns '(("Date"   . crawl-date)
-                           ("Source" . src-title)))
-(defvar grc-current-sort nil)
-(defvar grc-current-sort-reversed t)
-(defcustom grc-default-sort-column 'crawl-date
-  "Default column with which to sort the list view"
-  :group 'grc
-  :type '(choice (symbol :tag "Date" 'crawl-date)
-                 (symbol :tag "Source" 'src-title)))
-
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
-(defvar grc-list-date-col-width 11)
-(defvar grc-list-source-col-width 15)
 
-(defun grc-list-print-entry (entry)
-  "Takes an entry and formats it into the line that'll appear on the list view"
-  (let* ((source (grc-prepare-text (aget entry 'src-title t)))
-         (read (member "read" (aget entry 'categories)))
-         (date (seconds-to-time (aget entry 'crawl-date t)))
-         (one-week (- (float-time (current-time))
-                      (* 60 60 24 7)))
-         (static-width (+ grc-list-date-col-width 2
-                          grc-list-source-col-width 2
-                          1))
-         (title-width (- (window-width) static-width))
-         (title (grc-prepare-text (grc-title-for-printing entry)))
-         (row-format (format "%%-%ss  %%-%ss  %%s"
-                             grc-list-date-col-width
-                             grc-list-source-col-width)))
-    (insert
-     (format row-format
-             (format-time-string
-              (if (> one-week (float-time date))
-                  "%m/%d %H:%M"
-                "  %a %H:%M")
-              date)
-             (grc-truncate-text source grc-list-source-col-width t)
-             title))
-    (when read
-      (put-text-property (line-beginning-position) (line-end-position)
-                         'face 'grc-read-face))
-    (insert "\n")))
+(defun grc-list-entry-data (e)
+  "Calculate the data to print"
+  (let ((id (cdr (assoc 'id e))))
+    (list e (let* ((date (seconds-to-time (cdr (assoc 'date e))))
+                   (one-week (- (float-time (current-time))
+                                (* 60 60 24 7)))
+                   (d-str (format-time-string
+                           (if (> one-week (float-time date))
+                               "%m/%d %H:%M"
+                             "%a %H:%M")
+                           date))
+                   (src (grc-prepare-title (cdr (assoc 'src-title e))))
+                   (title (grc-prepare-title (cdr (assoc 'title e)))))
+              (vector d-str
+                      (propertize src 'face (grc-highlight-make-face src))
+                      title)))))
 
 (defun grc-list-print-entries (entries)
-  (mapcar 'grc-list-print-entry grc-entry-cache)
-
-  ;; remove final trailing newline
-  (goto-char (point-max))
-  (delete-horizontal-space)
-  (when (> 1 (point))
-    (delete-backward-char 1))
-
-  (grc-highlight-keywords
-   (mapcar (lambda (e) (grc-truncate-text
-                   e grc-list-source-col-width t))
-           (grc-keywords entries))))
+  "Prints all the entries"
+  (setq tabulated-list-entries (mapcar 'grc-list-entry-data entries))
+  (tabulated-list-print t))
 
 (defun grc-list-make-buffer (&optional msg)
+  "Create the list buffer and add a message if provided."
   (with-current-buffer (get-buffer-create grc-list-buffer)
     (let ((inhibit-read-only t))
       (grc-list-mode)
       (erase-buffer)
-      (grc-list-header-line)
       (when msg
-        (insert msg)))))
+        (insert msg))
+      (buffer-name))))
 
 (defun grc-list-display (&optional entries)
   "Display the given entries in the grc-list-buffer"
   (interactive)
-  (with-current-buffer (get-buffer-create grc-list-buffer)
-    (let ((inhibit-read-only t)
-          (line (1- (line-number-at-pos))))
+  (with-current-buffer (grc-list-make-buffer)
+    (let ((inhibit-read-only t))
       (erase-buffer)
-      (setq grc-entry-cache entries)
-      (grc-list-header-line)
-      (if (< 0 (length grc-entry-cache))
-          (grc-list-print-entries grc-entry-cache)
+      (if (< 0 (length entries))
+          (grc-list-print-entries entries)
         (insert "No unread entries."))
-      (goto-char (point-min))
-      (forward-line line))))
+      (goto-char (point-min)))))
 
 (defun grc-list-refresh ()
   (interactive)
-  (grc-list-display grc-entry-cache))
-
-(defun grc-list-incremental-display ()
-  "Fetch new entries and add them to the grc-list-buffer"
-  (grc-req-incremental-fetch
-   (lambda (resp)
-     (unless (get-buffer grc-list-buffer)
-       (grc-list-make-buffer))
-     (grc-list-display (append resp grc-entry-cache)))))
-
-(defun grc-list-get-current-entry ()
-  "utility function to get the entry from the current line in list view"
-  (let ((entry (nth (- (line-number-at-pos) 1) grc-entry-cache)))
-    (if entry
-        entry
-      (error "No entry at point."))))
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (insert "Fetching entries...")
+    (grc-req-unread-entries
+     '(lambda (response headers)
+        (let ((response (grc-req-parse-response response)))
+          (grc-list-display response))))))
 
 (defun grc-list-next-entry ()
   "Move the point to the next entry."
   (interactive)
-  (next-line)
-  (move-beginning-of-line nil))
+  (forward-line)
+  (beginning-of-line))
 
 (defun grc-list-previous-entry ()
   "Move the point to the previous entry."
   (interactive)
-  (previous-line)
-  (move-beginning-of-line nil))
-
-(defun grc-list-header-line ()
-  "Set the header line for the grc-list-buffer"
-  (setq header-line-format
-        (format "%s (%s)  Sort: %s %s"
-                (cdr (assoc grc-current-state
-                            grc-google-categories))
-                (length grc-entry-cache)
-                (car (rassoc (or grc-current-sort grc-default-sort-column)
-                             grc-sort-columns))
-                (if grc-current-sort-reversed
-                    "▼" "▲"))))
+  (forward-line -1)
+  (beginning-of-line))
 
 (defun grc-list-help ()
   "Show the help message for the grc list view"
   (interactive)
   (grc-help))
 
-(defun grc-list-view-external ()
-  "Open the current rss entry in the default emacs browser"
+(defun grc-list-has-read-overlay-p ()
+  "Tests to see if the current line has the grc-read overlay"
+  (member-if
+   (lambda (o) (equal 'grc-read-face (overlay-get o 'face)))
+   (overlays-at (point))))
+
+(defun grc-list-add-read-overlay (&optional begin end)
+  "Adds an overlay to the line that applies the grc-read-face to the text"
+  (let* ((begin (or begin (line-beginning-position)))
+         (end (or end (line-end-position)))
+         (overlay (make-overlay begin end)))
+    (overlay-put overlay 'face 'grc-read-face)))
+
+(defun grc-list-remove-read-overlay ()
+  "Removes the grc-read overlay from the line"
+  (dolist (overlay (overlays-at (point)))
+    (when (equal 'grc-read-face (overlay-get overlay 'face))
+      (delete-overlay overlay))))
+
+(defun grc-list-mark-region (tag begin end)
+  (save-excursion
+    (goto-char begin)
+    (while (and (< (point) end)
+                (not (eobp)))
+      (when (tabulated-list-get-id)
+        (tabulated-list-put-tag tag)
+        (run-hook-with-args 'grc-line-tagged-hook
+                            tag (tabulated-list-get-id)
+                            (line-beginning-position) (line-end-position)))
+      (forward-line))))
+
+(defun grc-list-on-tagged (tag id beginning end)
+  "Add or remove the grc-read overlay when marks are added or removed"
+  (save-excursion
+    (goto-char beginning)
+    (if (or (equal tag " ") (equal tag "k"))
+        (grc-list-remove-read-overlay)
+      (grc-list-add-read-overlay))))
+
+(add-hook 'grc-line-tagged-hook 'grc-list-on-tagged)
+
+(defun grc-list-marked-lines ()
+  "Collects all the lines that have marks and returns the associated data"
+  (let (marked)
+    (save-excursion
+      (goto-char (point-min))
+      (while (not (eobp))
+        (let ((cmd (char-to-string (char-after))))
+          (unless (equal cmd " ")
+            (let* ((alist (assoc cmd marked))
+                   (lst (cdr alist)))
+              (setq marked
+                    (cons
+                     (cons cmd (cons (tabulated-list-get-id) lst))
+                     (delete alist marked))))))
+        (forward-line)))
+    marked))
+
+(defun grc-list-execute-marks ()
+  "Apply the appropriate actions to the marked lines"
   (interactive)
-  (grc-view-external (grc-list-get-current-entry))
-  (grc-list-refresh))
+  (unless (derived-mode-p 'grc-list-mode)
+    (error "The current buffer is not in grc list mode"))
+  (run-hooks 'grc-list-before-execute-marks-hook)
+  (when (yes-or-no-p "Execute marks?")
+    (let ((marked (grc-list-marked-lines)))
+      (dolist (mark-alist marked)
+        (let ((mark-type (car mark-alist))
+              (items (cdr mark-alist)))
+          (run-hook-with-args 'grc-list-execute-marks-hook mark-type items))))
+    (run-hooks 'grc-list-after-execute-marks-hook)))
 
-(defun grc-list-mark-fn (tag)
-  "Returns a function that will add a category to the entry under the cursor,
-  refresh the list buffer, and move down one line"
-  `(lambda (&optional remove)
-     (funcall (grc-mark-fn ,tag) (grc-list-get-current-entry) remove)
-     (grc-list-next-entry)
-     (grc-list-refresh)))
+(defun grc-list-delete-read-lines ()
+  "Deletes lines that have the grc-read overlay"
+  (let ((inhibit-read-only t))
+    (goto-char (point-min))
+    (while (not (eobp))
+      (when (grc-list-has-read-overlay-p)
+        (delete-region (line-beginning-position) (1+ (line-end-position))))
+      (forward-line)))
+  (goto-char (point-min)))
 
-(defun grc-list-mark-read ()
-  "Mark the current entry as Read.  Use the prefix operator to unmark."
-  (interactive)
-  (grc-mark-read (grc-list-get-current-entry))
-  (grc-list-next-entry)
-  (grc-list-refresh))
+(add-hook 'grc-list-after-execute-marks-hook 'grc-list-delete-read-lines)
 
-(defun grc-list-mark-read-and-remove ()
-  "Mark the current entry as Read and remove it immediately from the list."
-  (interactive)
-  (grc-mark-read (grc-list-get-current-entry))
-  (setq grc-entry-cache (delete (grc-list-get-current-entry) grc-entry-cache))
-  (grc-list-refresh))
+(defun grc-list-clear-marks ()
+  (grc-list-mark-region " " (point-min) (point-max)))
 
-(defun grc-list-mark-kept-unread ()
-  "Mark the current entry as Kept Unread.  Use the prefix operator to unmark."
-  (interactive)
-  (grc-mark-kept-unread (grc-list-get-current-entry))
-  (grc-list-next-entry)
-  (grc-list-refresh))
+(add-hook 'grc-list-after-execute-marks-hook 'grc-list-clear-marks t)
 
-(defun grc-list-send-to-instapaper ()
-  (interactive)
-  (grc-send-to-instapaper (grc-list-get-current-entry))
-  (grc-list-mark-read))
+(defmacro grc-list-defun-mark-for (name tag)
+  "Define a function to mark entries"
+  (let ((fn-name (intern (format "grc-list-mark-%s" name)))
+        (doc (format "Mark entry at point as %s."
+                     (replace-regexp-in-string "[-]" " " name))))
+    `(progn
+       (defun ,fn-name () ,doc
+         (interactive)
+         (let ((beginning (line-beginning-position))
+               (end (line-end-position)))
+           (tabulated-list-put-tag ,tag t)
+           (run-hook-with-args 'grc-line-tagged-hook
+                               ,tag (tabulated-list-get-id)
+                               beginning end)))
+       (put ',fn-name 'definition-name ',name))))
 
-(defun grc-list-mark-starred (remove)
-  "Star the current entry.  Use the prefix operator to un-star."
-  (interactive "P")
-  (funcall (grc-list-mark-fn "starred") remove))
+(defmacro grc-list-execute-marks-for (name tag fn)
+  "Define a function to execute the marks for a particular tag."
+  (let ((fn-name (intern (format "grc-list-execute-%s-marks" name)))
+        (doc (format "Execute entries marked as %s."
+                     (replace-regexp-in-string "[-]" " " name))))
+    `(progn
+       (defun ,fn-name (mark-type items) ,doc
+         (when (equal ,tag mark-type)
+           (funcall ,fn items)))
+       (put ',fn-name 'definition-name ',name))))
 
-(defun grc-list-mark-all-read (feed)
-  "Mark all as Read."
-  (interactive "P")
-  (let* ((feed-name (when (and feed (interactive-p))
-                      (ido-completing-read "Feed: "
-                                           (mapcar (lambda (e) (aget e
-                                                                'src-title t))
-                                                   grc-entry-cache)
-                                           nil t)))
-         (items (remove-if-not (lambda (e) (string= feed-name
-                                               (aget e 'src-title t)))
-                               grc-entry-cache))
-         (src (aget (first items) 'src-id t)))
-    (grc-req-mark-all-read src)
-    (mapcar (lambda (e) (grc-add-category e "read"))
-            (or items grc-entry-cache)))
-  (grc-list-display grc-entry-cache)
-  (goto-char (point-min))
-  (grc-list-refresh))
+(defmacro grc-list-def-fns (name tag &optional handler)
+  "Defines both the mark and execute functions and adds the appropriate hook
+to wire it all together"
+  (let ((hook-name (intern (format "grc-list-execute-%s-marks" name))))
+    `(progn
+       (grc-list-defun-mark-for ,name ,tag)
+       (when ,handler
+         (grc-list-execute-marks-for ,name ,tag ,handler)
+         (add-hook 'grc-list-execute-marks-hook ',hook-name)))))
+
+;; Declare all the mark fns and execution handlers
+(grc-list-def-fns "unread" " ")
+(grc-list-def-fns "read" "r" 'grc-mark-read)
+(grc-list-def-fns "kept-unread" "k" 'grc-mark-kept)
+(grc-list-def-fns "starred" "s" 'grc-mark-starred)
+(grc-list-def-fns "instapaper" "i" 'grc-send-to-instapaper)
 
 (defun grc-list-show-entry ()
   "View the current entry."
   (interactive)
-  (grc-show-entry (grc-list-get-current-entry)))
+  (when (tabulated-list-get-id)
+    (grc-show-entry (tabulated-list-get-id))))
 
-(defun grc-list-sort ()
-  "Cycle through sort states.
-
-  The defined states are:
-
-  Date Asc
-  Date Desc
-  Source Asc
-  Source Desc"
+(defun grc-list-show-entry-external ()
+  "Open the current rss entry in the default emacs browser"
   (interactive)
-  (let* ((sort-cols (mapcar 'cdr grc-sort-columns))
-         (next-sort (or (cadr (member grc-current-sort sort-cols))
-                        grc-default-sort-column)))
-    (setq grc-current-sort-reversed (not grc-current-sort-reversed))
-    (when (not grc-current-sort-reversed)
-      (setq grc-current-sort next-sort))
-    (setq grc-entry-cache (grc-sort-by grc-current-sort grc-entry-cache
-                                       grc-current-sort-reversed 'title))
-    (grc-list-refresh)))
+  (when (tabulated-list-get-id)
+    (grc-show-external (tabulated-list-get-id))))
+
+(defun grc-list-after-show ()
+  "Add the read overlay and mark an entry as read when it is opened in the
+view buffer or externally in the browser"
+  (with-current-buffer grc-list-buffer
+    (let ((id (tabulated-list-get-id)))
+      (grc-list-add-read-overlay)
+      (grc-mark-read (list id)))))
+
+(add-hook 'grc-show-entry-hook 'grc-list-after-show)
+(add-hook 'grc-show-external-hook 'grc-list-after-show)
 
 (defvar grc-list-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map tabulated-list-mode-map)
     (define-key map "q"         'grc-kill-this-buffer)
     (define-key map "?"         'grc-list-help)
     (define-key map "k"         'grc-list-mark-kept-unread)
     (define-key map "r"         'grc-list-mark-read)
-    (define-key map "x"         'grc-list-mark-read-and-remove)
     (define-key map "*"         'grc-list-mark-starred)
     (define-key map "n"         'grc-list-next-entry)
     (define-key map "p"         'grc-list-previous-entry)
     (define-key map " "         'grc-list-show-entry)
     (define-key map (kbd "RET") 'grc-list-show-entry)
-    (define-key map "o"         'grc-list-sort)
-    (define-key map "v"         'grc-list-view-external)
-    (define-key map "l"         'grc-list-send-to-instapaper)
-    (define-key map "g"         'grc)
+    (define-key map "v"         'grc-list-show-entry-external)
+    (define-key map "i"         'grc-list-mark-instapaper)
+    (define-key map "u"         'grc-list-mark-unmark)
+    (define-key map "x"         'grc-list-execute-marks)
+    (define-key map "g"         'grc-list-refresh)
     map)
-  "Keymap for \"grc list\" buffers.")
+  "Keymap for \"grc-list\" buffers.")
 (fset 'grc-list-mode-map grc-list-mode-map)
 
-(defun grc-list-mode ()
+(define-derived-mode grc-list-mode tabulated-list-mode "grc-list"
   "Major mode for viewing feeds with grc
 
   This buffer contains the results of the \"grc\" command
@@ -279,24 +289,34 @@
 
   g    Display or refresh the grc reading list.
   v    Open the current rss entry in the default emacs browser
-  o    Cycle through sort states.
   RET  View the current entry.
   SPC  View the current entry.
   p    Move the point to the previous entry.
   n    Move the point to the next entry.
-  *    Star the current entry.  Use the prefix operator to un-star.
-  x    Mark the current entry as Read and remove it immediately from the list.
+  *    Star the current entry.
   r    Mark the current entry as Read.
   k    Mark the current entry as Kept Unread.
+  u    Unmark the current entry.
+  x    Execute the marked actions.
   ?    Show the help message for the grc list screen
   q    Kill the current buffer."
   (interactive)
   (kill-all-local-variables)
-  (use-local-map grc-list-mode-map)
   (setq major-mode 'grc-list-mode
-        mode-name "grc-list")
-  (setq buffer-read-only t)
-  (setq truncate-lines t)
+        mode-name "grc-list"
+        buffer-read-only t
+        lexical-binding t
+        tabulated-list-format [("Date" 11
+                                (lambda (a b)
+                                  (> (cdr (assoc 'date (car a)))
+                                     (cdr (assoc 'date (car b))))))
+                               ("Source" 15 t)
+                               ("Title" 0 t)]
+        tabulated-list-sort-key (cons "Date" nil)
+        tabulated-list-padding 2
+        truncate-lines t)
+  (tabulated-list-init-header)
+  (use-local-map grc-list-mode-map)
   (hl-line-mode grc-enable-hl-line))
 
 (provide 'grc-list)

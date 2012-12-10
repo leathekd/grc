@@ -41,81 +41,129 @@
   "Face used for displaying next/previous story headers."
   :group 'grc-faces)
 
-(defcustom grc-use-w3m t
-  "Use w3m to render the entries."
-  :group 'grc
-  :type 'boolean)
-
-(defcustom grc-use-anchor-annotations t
-  "When w3m is not available, render links inline or add an annotation and
-list links at the bottom"
-  :group 'grc
-  :type 'boolean)
-
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
+
+(defvar grc-show-header-renderer 'grc-show-w3m-header-renderer
+  "The function to call to render the header. Is called with the show buffer
+active and is passed the entry object")
+
+(defvar grc-show-summary-renderer 'grc-show-w3m-renderer
+  "The function to call to render the summary (text) of the entry. Is called
+with the show buffer active, the summary already inserted, and the view narrowed
+to just the summary.")
+
+(defvar grc-show-external-link-viewer 'w3m-external-view-this-url
+  "The function that is called to view the current line's entry in an external
+browser")
+
+(defvar grc-show-next-anchor-fn 'w3m-next-anchor
+  "The function called to move the cursor to the next anchor")
+
+(defvar grc-show-previous-anchor-fn 'w3m-previous-anchor
+  "The function called to move the cursor to the previous anchor")
+
+(defvar grc-show-prepare-text-fn 'grc-show-w3m-prepare-text)
+
+(defun grc-propertize-keyword (keyword)
+  "Takes a string, KEYWORD, and returns it propertized with a generated
+foreground color"
+  (propertize keyword 'face (grc-highlight-make-face keyword)))
+
+(defun grc-show-w3m-prepare-text (text)
+  "Prepares text for display by decoding entities and stripping HTML. Takes
+TEXT as an arg and returns the processed text."
+  (with-temp-buffer
+    (insert text)
+    (w3m-decode-entities)
+    (goto-char (point-min))
+    (html2text)
+    (buffer-string)))
+
+(defun grc-show-prepare-text (text)
+  (funcall grc-show-prepare-text-fn text))
+
+(defun grc-show-w3m-header-renderer (entry)
+  "Render the header with colored labels and some info about next and previous
+stories"
+  (let ((next-entry (with-current-buffer grc-list-buffer
+                      (save-excursion
+                        (forward-line)
+                        (tabulated-list-get-id))))
+        (prev-entry (with-current-buffer grc-list-buffer
+                      (save-excursion
+                        (goto-char (line-beginning-position))
+                        (unless (bobp)
+                          (forward-line -1)
+                          (tabulated-list-get-id))))))
+    (mapcar (lambda (lst)
+              (insert (format "%s: %s\n"
+                              (car lst)
+                              (grc-show-prepare-text (cadr lst)))))
+            `(((propertize "Title" 'face 'grc-show-header-face)
+               ,(cdr (assoc 'title entry)))
+              ((propertize "Date" 'face 'grc-show-header-face)
+               ,(format-time-string
+                          "%a %m/%d %l:%M %p"
+                          (seconds-to-time (cdr (assoc 'date entry)))))
+              ((propertize "Source" 'face 'grc-show-header-face)
+               ,(grc-propertize-keyword (cdr (assoc 'src-title entry))))
+              ((propertize "Next Story" 'face 'grc-show-context-face)
+               ,(if next-entry
+                    (concat (cdr (assoc 'title next-entry))
+                            " [" (grc-propertize-keyword
+                                  (cdr (assoc 'src-title next-entry))) "]")
+                  "None"))
+              ((propertize "Previous Story" 'face 'grc-show-context-face)
+               ,(if prev-entry
+                    (concat (cdr (assoc 'title prev-entry))
+                            " [" (grc-propertize-keyword
+                                  (cdr (assoc 'src-title prev-entry))) "]")
+                  "None"))))
+    (insert "\n")))
+
+(defun grc-show-render-header (entry)
+  (funcall grc-show-header-renderer entry))
+
+(defun grc-show-w3m-renderer ()
+  (let ((w3m-display-inline-images t)
+        (w3m-fill-column 72))
+    (w3m-region (point-min) (point-max))))
+
+(defun grc-show-basic-renderer ()
+  (goto-char (point-min))
+  (grc-clean-buffer)
+  (if grc-use-anchor-annotations
+      (progn
+        (goto-char (point-max))
+        (let ((after (search-backward-regexp "\n\nLinks:\n" nil t)))
+          (when after
+            (fill-region (point-min) after))))
+    (fill-region (point-min) (point-max))))
+
+(defun grc-show-render-summary ()
+  (funcall grc-show-summary-renderer))
 
 (defun grc-show-entry (entry)
   "Print the given entry in the grc-show-buffer"
   (let ((buffer (get-buffer-create grc-show-buffer)))
     (with-current-buffer buffer
       (grc-show-mode)
-      (let ((inhibit-read-only t)
-            (next-entry (cadr (member entry grc-entry-cache)))
-            (prev-entry (cadr (member entry (reverse grc-entry-cache))))
-            (summary (or (aget entry 'content t)
-                         (aget entry 'summary t)
-                         "No summary provided.")))
+      (let ((inhibit-read-only t))
         (erase-buffer)
-        (mapcar (lambda (lst) (insert (format "%s:  %s\n"
-                                         (car lst) (cadr lst))))
-                `(("Title"  ,(grc-prepare-text
-                              (grc-title-for-printing entry)))
-                  ("Link"   ,(aget entry 'link))
-                  ("Date"   ,(format-time-string
-                              "%a %m/%d %l:%M %p"
-                              (seconds-to-time (aget entry 'date))))
-                  ("Source" ,(aget entry 'src-title))
-                  ("Next Story"
-                   ,(if next-entry
-                        (grc-prepare-text
-                         (concat (grc-title-for-printing next-entry)
-                                 " [" (aget next-entry 'src-title) "]"))
-                      "None"))
-                  ("Previous Story"
-                   ,(if prev-entry
-                        (grc-prepare-text
-                         (concat (grc-title-for-printing prev-entry)
-                                 " [" (aget prev-entry 'src-title) "]"))
-                      "None"))))
+        (grc-show-render-header entry)
+        (save-restriction
+          (narrow-to-region (point) (point-max))
+          (insert (or (aget entry 'content t)
+                      (aget entry 'summary t)
+                      "No summary provided."))
+          (grc-show-render-summary))
+        (put-text-property (point-min) (point-max) 'grc-current-entry entry)
+        (goto-char (point-min))
+        (switch-to-buffer buffer))
+      (run-hooks 'grc-show-entry-hook))))
 
-        (let ((before (point)))
-          (insert "\n" summary)
-
-          (if (and (featurep 'w3m)
-                   grc-use-w3m)
-              (progn
-                (goto-char (point-min))
-                (grc-replace-string "\n" "<br />")
-                (let ((w3m-display-inline-images t)
-                      (w3m-fill-column 80))
-                  (w3m-region (point-min) (point-max))))
-            (progn
-              (grc-clean-buffer)
-              (if grc-use-anchor-annotations
-                  (progn
-                    (goto-char (point-max))
-                    (let ((after (search-backward-regexp "\n\nLinks:\n" nil t)))
-                      (when after
-                        (fill-region before after))))
-                (fill-region before (point-max))))))
-
-        (grc-highlight-keywords (append '("Title:" "Date:" "Source:" "Link:"
-                                          "Next Story:" "Previous Story:")
-                                        (grc-keywords grc-entry-cache))))
-      (setq grc-current-entry (grc-mark-read entry))
-      (goto-char (point-min))
-      (switch-to-buffer buffer))
-    (grc-list-refresh)))
+(defun grc-show-current-entry ()
+  (get-text-property (point) 'grc-current-entry))
 
 (defun grc-show-help ()
   "Show the help message for the grc show view"
@@ -125,56 +173,49 @@ list links at the bottom"
 (defun grc-show-mark-kept-unread ()
   "Mark the current entry as Keep Unread."
   (interactive)
-  (setq grc-current-entry (grc-mark-kept-unread grc-current-entry))
-  (grc-list-refresh))
+  (grc-mark-kept-unread (list (grc-show-current-entry))))
 
 (defun grc-show-mark-read ()
   "Mark the current entry as Read"
   (interactive)
-  (setq grc-current-entry (grc-mark-read grc-current-entry))
-  (grc-list-refresh))
+  (grc-mark-read (list (grc-show-current-entry))))
 
 (defun grc-show-mark-starred (remove)
   "Star the current entry."
-  (interactive "P")
-  (funcall (grc-mark-fn "starred") grc-current-entry remove)
-  (grc-list-refresh))
+  (interactive)
+  (grc-mark-starred (list (grc-show-current-entry))))
 
 (defun grc-show-kill-this-buffer ()
   "Close the show buffer and return to the list buffer."
   (interactive)
   (when (get-buffer grc-list-buffer)
-    (switch-to-buffer (get-buffer grc-list-buffer))
+    (switch-to-buffer grc-list-buffer)
     (kill-buffer grc-show-buffer)))
 
 (defun grc-show-next-entry ()
   "View the next entry."
   (interactive)
-  (let ((entry (cadr (member grc-current-entry grc-entry-cache))))
-    (if entry
-        (progn
-          (grc-show-entry entry)
-          (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
-            (forward-line)))
-      (error "No more entries"))))
+  (with-current-buffer grc-list-buffer
+    (forward-line)
+    (if (eobp)
+        (error "No more entries")
+      (grc-list-show-entry))))
 
 (defun grc-show-previous-entry ()
   "View the previous entry."
   (interactive)
-  (let ((entry (cadr (member grc-current-entry (reverse grc-entry-cache)))))
+  (let ((entry (with-current-buffer grc-list-buffer
+                 (forward-line -1)
+                 (tabulated-list-get-id))))
     (if entry
-        (progn
-          (grc-show-entry entry)
-          (with-current-buffer grc-list-buffer
-            (grc-list-refresh)
-            (forward-line -1)))
+        (grc-show-entry entry)
       (error "No previous entries"))))
 
 (defun grc-show-view-external ()
   "Load the current entry in an external browser."
   (interactive)
-  (grc-view-external grc-current-entry))
+  (grc-view-external (grc-show-current-entry))
+  (run-hooks 'grc-show-external-hook))
 
 (defun grc-show-advance-or-show-next-entry ()
   "Will move down 25 lines or load the next entry once at the bottom."
@@ -186,33 +227,28 @@ list links at the bottom"
       (when (eobp)
         (grc-show-next-entry)))))
 
+
+
 (defun grc-show-external-view-url ()
   "Load the URL/anchor under point in an external browser."
   (interactive)
-  (if (and (featurep 'w3m)
-           grc-use-w3m)
-      (w3m-external-view-this-url)
-    (ffap)))
+  (funcall grc-show-external-link-viewer))
 
 (defun grc-show-send-to-instapaper ()
   (interactive)
-  (grc-send-to-instapaper grc-current-entry))
+  (grc-send-to-instapaper (list (grc-show-current-entry))))
+
+
 
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
   (interactive)
-  (if (and (featurep 'w3m)
-           grc-use-w3m)
-      (w3m-next-anchor)
-    (forward-button 1 t)))
+  (funcall grc-show-next-anchor))
 
 (defun grc-show-previous-anchor ()
   "Move the point to the previous anchor."
   (interactive)
-  (if (and (featurep 'w3m)
-           grc-use-w3m)
-      (w3m-previous-anchor)
-    (ffap-next-guess t)))
+  (funcall grc-show-previous-anchor))
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
@@ -253,15 +289,10 @@ list links at the bottom"
   (interactive)
   (kill-all-local-variables)
   (use-local-map grc-show-mode-map)
-  (mapcar (lambda (kw)
-            (puthash kw 'grc-show-header-face grc-highlight-face-table))
-          '("Title:" "Date:" "Source:" "Link:"))
-  (mapcar (lambda (kw)
-            (puthash kw 'grc-show-context-face grc-highlight-face-table))
-          '("Next Story:" "Previous Story:"))
   (setq major-mode 'grc-show-mode
-        mode-name "grc-show")
-  (setq buffer-read-only t))
+        mode-name "grc-show"
+        truncate-lines t
+        buffer-read-only t))
 
 (provide 'grc-show)
 ;;; grc-show.el ends here
