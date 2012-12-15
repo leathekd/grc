@@ -65,16 +65,6 @@
   :type 'integer
   :group 'grc)
 
-(defcustom grc-instapaper-username ""
-  ""
-  :group 'grc
-  :type 'string)
-
-(defcustom grc-instapaper-password ""
-  ""
-  :group 'grc
-  :type 'string)
-
 (defvar grc-google-categories
   '(("fresh"                      . "Fresh")
     ("kept-unread"                . "Kept Unread")
@@ -370,14 +360,6 @@
   (let ((link (cdr (assoc 'link entry))))
     (browse-url link)
     (grc-mark-read (list entry))))
-
-(defun grc-send-to-instapaper (entries)
-  (dolist (entry (grc-list entries))
-    (grapnel-retrieve-url "https://www.instapaper.com/api/add"
-                          '((complete . (message "Sent to Instapaper")))
-                          `(("username" . ,grc-instapaper-username)
-                            ("password" . ,grc-instapaper-password)
-                            ("url"      . ,(aget entry 'link t))))))
 
 (provide 'grc)
 ;;; grc.el ends here

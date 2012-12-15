@@ -233,7 +233,6 @@ to wire it all together"
 (grc-list-def-fns "read" "r" 'grc-mark-read)
 (grc-list-def-fns "kept-unread" "k" 'grc-mark-kept)
 (grc-list-def-fns "starred" "s" 'grc-mark-starred)
-(grc-list-def-fns "instapaper" "i" 'grc-send-to-instapaper)
 
 (defun grc-list-show-entry ()
   "View the current entry."
@@ -271,7 +270,6 @@ view buffer or externally in the browser"
     (define-key map " "         'grc-list-show-entry)
     (define-key map (kbd "RET") 'grc-list-show-entry)
     (define-key map "v"         'grc-list-show-entry-external)
-    (define-key map "i"         'grc-list-mark-instapaper)
     (define-key map "u"         'grc-list-mark-unmark)
     (define-key map "x"         'grc-list-execute-marks)
     (define-key map "g"         'grc-list-refresh)

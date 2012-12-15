@@ -227,18 +227,10 @@ stories"
       (when (eobp)
         (grc-show-next-entry)))))
 
-
-
 (defun grc-show-external-view-url ()
   "Load the URL/anchor under point in an external browser."
   (interactive)
   (funcall grc-show-external-link-viewer))
-
-(defun grc-show-send-to-instapaper ()
-  (interactive)
-  (grc-send-to-instapaper (list (grc-show-current-entry))))
-
-
 
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
@@ -261,7 +253,6 @@ stories"
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
     (define-key map "v"               'grc-show-view-external)
-    (define-key map "l"               'grc-show-send-to-instapaper)
     (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
     (define-key map (kbd "<backtab>") 'grc-show-previous-anchor)
