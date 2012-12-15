@@ -31,7 +31,6 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-
 (require 'cl)
 (require 'html2text)
 
@@ -42,7 +41,7 @@
 (require 'grc-highlight)
 (require 'grc-list)
 (require 'grc-show)
-
+(require 'grc-w3m)
 
 (defgroup grc nil "Google Reader Client for Emacs")
 
@@ -88,16 +87,6 @@
   "Replaces all regexp matches with to-string"
   (while (search-forward-regexp regexp nil t)
     (replace-match to-string nil t)))
-
-(defun grc-w3m-prepare-text (text)
-  "Prepares text for display by decoding entities and stripping HTML. Takes
-TEXT as an arg and returns the processed text."
-  (with-temp-buffer
-    (insert text)
-    (w3m-decode-entities)
-    (goto-char (point-min))
-    (html2text)
-    (buffer-string)))
 
 (defun grc-prepare-text (text)
   (funcall grc-prepare-text-fn text))
