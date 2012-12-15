@@ -76,6 +76,7 @@
 (defvar grc-state-alist '("Kept Unread" "Read" "Reading List" "Starred"))
 (defvar grc-current-state "reading-list")
 
+(defvar grc-prepare-text-fn 'grc-show-w3m-prepare-text)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -89,24 +90,18 @@
   (while (search-forward-regexp regexp nil t)
     (replace-match to-string nil t)))
 
-(defun grc-prepare-title (title)
+(defun grc-w3m-prepare-text (text)
+  "Prepares text for display by decoding entities and stripping HTML. Takes
+TEXT as an arg and returns the processed text."
   (with-temp-buffer
-    (insert title)
-    (when (featurep 'w3m)
-      (w3m-decode-entities))
+    (insert text)
+    (w3m-decode-entities)
     (goto-char (point-min))
     (html2text)
     (buffer-string)))
 
 (defun grc-prepare-text (text)
-  "Meant for shorter strings (where link annotation isn't desired), strips HTML
-  and decodes entities"
-  (grc-clean-text text t))
-
-(defun grc-keywords (entries)
-  "Keywords determines what will be highlighted.  For now this is only the
-  source of the entry."
-  (mapcar (lambda (e) (aget e 'src-title t)) entries))
+  (funcall grc-prepare-text-fn text))
 
 (defun grc-read-state (prompt)
   "Return state name read from minibuffer."

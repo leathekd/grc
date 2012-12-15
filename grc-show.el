@@ -62,25 +62,10 @@ browser")
 (defvar grc-show-previous-anchor-fn 'w3m-previous-anchor
   "The function called to move the cursor to the previous anchor")
 
-(defvar grc-show-prepare-text-fn 'grc-show-w3m-prepare-text)
-
 (defun grc-propertize-keyword (keyword)
   "Takes a string, KEYWORD, and returns it propertized with a generated
 foreground color"
   (propertize keyword 'face (grc-highlight-make-face keyword)))
-
-(defun grc-show-w3m-prepare-text (text)
-  "Prepares text for display by decoding entities and stripping HTML. Takes
-TEXT as an arg and returns the processed text."
-  (with-temp-buffer
-    (insert text)
-    (w3m-decode-entities)
-    (goto-char (point-min))
-    (html2text)
-    (buffer-string)))
-
-(defun grc-show-prepare-text (text)
-  (funcall grc-show-prepare-text-fn text))
 
 (defun grc-show-w3m-header-renderer (entry)
   "Render the header with colored labels and some info about next and previous
@@ -98,7 +83,7 @@ stories"
     (mapcar (lambda (lst)
               (insert (format "%s: %s\n"
                               (car lst)
-                              (grc-show-prepare-text (cadr lst)))))
+                              (grc-prepare-text (cadr lst)))))
             `(((propertize "Title" 'face 'grc-show-header-face)
                ,(cdr (assoc 'title entry)))
               ((propertize "Date" 'face 'grc-show-header-face)
