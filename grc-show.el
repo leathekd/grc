@@ -127,8 +127,8 @@ stories"
         (grc-show-render-header entry)
         (save-restriction
           (narrow-to-region (point) (point-max))
-          (insert (or (aget entry 'content t)
-                      (aget entry 'summary t)
+          (insert (or (cdr (assoc 'content entry))
+                      (cdr (assoc 'summary entry))
                       "No summary provided."))
           (grc-show-render-summary))
         (put-text-property (point-min) (point-max) 'grc-current-entry entry)

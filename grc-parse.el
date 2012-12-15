@@ -41,18 +41,19 @@
                           (cond
                            (state-idx (substring c (+ state-idx 18)))
                            (label-idx (substring c (+ label-idx 7))))))
-                      (aget json-entry 'categories)))))
+                      (cdr (assoc 'categories json-entry))))))
 
 (defun grc-parse-process-entry (json-entry)
   "Extract all the fields grc needs from the json entry"
-  `((id         . ,(aget json-entry 'id))
-    (date       . ,(aget json-entry 'published))
+  `((id         . ,(cdr (assoc 'id json-entry)))
+    (date       . ,(cdr (assoc 'published json-entry)))
     (crawl-date . ,(string-to-int (substring
-                                   (aget json-entry 'crawlTimeMsec)
+                                   (cdr (assoc 'crawlTimeMsec json-entry))
                                    0 -3)))
-    (title      . ,(aget json-entry 'title))
+    (title      . ,(cdr (assoc 'title json-entry)))
     ;; TODO: could be many links here...
-    (link       . ,(aget (first (aget json-entry 'alternate t)) 'href))
+    (link       . ,(cdr (assoc 'href
+                               (first (cdr (assoc 'alternate json-entry))))))
     (src-title  . ,(grc-get-in json-entry '(origin title)))
     (src-url    . ,(grc-get-in json-entry '(origin htmlUrl)))
     (src-id     . ,(grc-get-in json-entry '(origin streamId)))
@@ -64,7 +65,7 @@
 (defun grc-parse-parse-response (root)
   "Extract all the entries from the parsed json"
   (setq grc-raw-response root)
-  (let ((entries (aget root 'items t)))
+  (let ((entries (cdr (assoc 'items root))))
     (mapcar 'grc-parse-process-entry entries)))
 
 (provide 'grc-parse)

@@ -70,7 +70,7 @@
   seq is a list of keys
   Returns nil or the not-found value if the key is not present"
   (let ((val (reduce (lambda (a k)
-                       (aget a k)) seq :initial-value alist)))
+                       (cdr (assoc k a))) seq :initial-value alist)))
     (or val not-found)))
 
 (defun grc-sort-fn (a b)
@@ -82,7 +82,7 @@
                  (t 'equal))))
         ((and (stringp a) (stringp b))
          (lambda (x y)
-           (cond ((string> x y) nil)
+           (cond ((string< y x) nil)
                  ((string< x y) t)
                  (t 'equal))))
         (t (error "Can't sort: %s (%s), %s (%s)"
@@ -99,12 +99,12 @@
   (let ((sorted
          (sort (copy-alist entries)
                (lambda (x y)
-                 (let* ((a (aget x key))
-                        (b (aget y key))
+                 (let* ((a (cdr (assoc key x)))
+                        (b (cdr (assoc key y)))
                         (r (funcall (grc-sort-fn a b) a b))
                         (r (if (and secondary-key (equal r 'equal))
-                               (let* ((a2 (aget x secondary-key))
-                                      (b2 (aget y secondary-key)))
+                               (let* ((a2 (cdr (assoc secondary-key x)))
+                                      (b2 (cdr (assoc secondary-key y))))
                                  (funcall (grc-sort-fn a2 b2) a2 b2))
                              r)))
                    (if (equal r 'equal) nil r))))))
@@ -126,12 +126,13 @@
        ((name . \"fred\")   (age . 25)))) "
   (let* ((groups (remq nil (remove-duplicates
                             (mapcar (lambda (entry)
-                                      (grc-string (aget entry key t))) entries)
+                                      (grc-string (cdr (assoc key entry))))
+                                    entries)
                             :test 'string=)))
          (ret-list '()))
     (mapcar (lambda (entry)
-              (let* ((group-name (aget entry key t))
-                     (group (aget ret-list group-name t)))
+              (let* ((group-name (cdr (assoc key entry)))
+                     (group (cdr (assoc group-name ret-list))))
                 (aput 'ret-list group-name (cons entry group))))
             entries)
     ret-list))

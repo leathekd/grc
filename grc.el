@@ -32,7 +32,6 @@
 
 ;;; Code:
 
-(require 'assoc)
 (require 'cl)
 (require 'html2text)
 
