@@ -114,17 +114,6 @@ stories"
         (w3m-fill-column 72))
     (w3m-region (point-min) (point-max))))
 
-(defun grc-show-basic-renderer ()
-  (goto-char (point-min))
-  (grc-clean-buffer)
-  (if grc-use-anchor-annotations
-      (progn
-        (goto-char (point-max))
-        (let ((after (search-backward-regexp "\n\nLinks:\n" nil t)))
-          (when after
-            (fill-region (point-min) after))))
-    (fill-region (point-min) (point-max))))
-
 (defun grc-show-render-summary ()
   (funcall grc-show-summary-renderer))
 

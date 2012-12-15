@@ -43,24 +43,9 @@
 (defvar grc-req-base-url "http://www.google.com/reader/"
   "Base URL for Google Reader  API.")
 
-(defvar grc-req-subscribed-feed-list-url
-  (concat grc-req-base-url "api/0/subscription/list")
-  "URL for retrieving list of subscribed feeds.")
-
-(defvar grc-req-preference-set-url
-  (concat grc-req-base-url "api/0/preference/set")
-  "URL for setting a preference")
-
 (defvar grc-req-edit-tag-url
   (concat grc-req-base-url "api/0/edit-tag")
   "URL for editing a tag")
-
-(defvar grc-req-edit-item-url
-  (concat grc-req-base-url "api/0/item/edit")
-  "URL for editing an entry")
-
-(defvar grc-req-stream-url-pattern
-  "http://www.google.com/reader/api/0/stream/contents/%s")
 
 (defvar grc-req-reading-list-url (grc-req-stream-url "reading-list"))
 
@@ -75,7 +60,8 @@
   (let ((stream-state (if (null state)
                           ""
                         (concat "user/-/state/com.google/" state))))
-    (format grc-req-stream-url-pattern stream-state)))
+    (format "http://www.google.com/reader/api/0/stream/contents/%s"
+            stream-state)))
 
 (defun grc-req-parse-response (raw-resp)
   (cond
