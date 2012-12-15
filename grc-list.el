@@ -314,8 +314,12 @@ view buffer or externally in the browser"
         tabulated-list-padding 2
         truncate-lines t)
   (tabulated-list-init-header)
-  (use-local-map grc-list-mode-map)
-  (hl-line-mode grc-enable-hl-line))
+  (use-local-map grc-list-mode-map))
+
+(defun grc-list-enable-hl-line ()
+  (hl-line-mode t))
+
+(add-hook 'grc-list-mode-hook 'grc-list-enable-hl-line)
 
 (provide 'grc-list)
 ;;; grc-list.el ends here

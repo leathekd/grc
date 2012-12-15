@@ -55,11 +55,6 @@
   "grc face for read items"
   :group 'grc-faces)
 
-(defcustom grc-enable-hl-line t
-  "Turn on hl-line-mode in the grc list buffer"
-  :type  'boolean
-  :group 'grc)
-
 (defcustom grc-fetch-count 100
   "The count of items to fetch.  The larger the count the slower the request."
   :type 'integer
