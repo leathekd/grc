@@ -55,7 +55,7 @@
   "grc face for read items"
   :group 'grc-faces)
 
-(defcustom grc-fetch-count 100
+(defcustom grc-fetch-count 50
   "The count of items to fetch.  The larger the count the slower the request."
   :type 'integer
   :group 'grc)

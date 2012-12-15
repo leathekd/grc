@@ -143,7 +143,7 @@
       headers))))
 
 (defun grc-req-unread-entries (callback &optional limit since)
-  (let* ((limit (or limit 50))
+  (let* ((limit (or limit grc-fetch-count))
          ;; the number of items to return
          (params (when limit
                    `(("n" . ,(format "%s" limit)))))
