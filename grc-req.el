@@ -48,8 +48,6 @@
   (concat grc-req-base-url "api/0/edit-tag")
   "URL for editing a tag")
 
-(defvar grc-req-reading-list-url (grc-req-stream-url "reading-list"))
-
 (defvar grc-req-curl-options (concat "--compressed --silent"
                                      " --location --location-trusted"
                                      " --connect-timeout 2 --max-time 10"
@@ -63,6 +61,8 @@
                         (concat "user/-/state/com.google/" state))))
     (format "http://www.google.com/reader/api/0/stream/contents/%s"
             stream-state)))
+
+(defvar grc-req-reading-list-url (grc-req-stream-url "reading-list"))
 
 (defun grc-req-parse-response (raw-resp)
   (cond
