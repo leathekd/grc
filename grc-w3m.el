@@ -31,6 +31,8 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(autoload 'w3m-decode-entities "w3m.el")
+
 (defun grc-w3m-prepare-text (text)
   "Prepares text for display by decoding entities and stripping HTML. Takes
 TEXT as an arg and returns the processed text."
