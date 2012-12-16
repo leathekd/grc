@@ -44,8 +44,9 @@
                     t))
        (failure . (lambda (_ _) nil))
        (error
-        . (lambda (r)
-            (error "Curl failed while checking the instapaper creds " r)))))))
+        . (lambda (r exit-code)
+            (error "Curl failed with %s while checking the instapaper creds %s"
+                   exit-code r)))))))
 
 (defun grc-instapaper-cred-plist ()
   "Retrieve the credentials from the secure plstore"
