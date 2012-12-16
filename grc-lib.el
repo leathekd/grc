@@ -31,12 +31,6 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defun grc-trim (s)
-  "Remove whitespace at beginning and end of string."
-  (if (string-match "\\`[ \t\n\r]+" s) (setq s (replace-match "" t t s)))
-  (if (string-match "[ \t\n\r]+\\'" s) (setq s (replace-match "" t t s)))
-  s)
-
 (defun grc-list (thing)
   "Return THING if THING is a list or a list with THING as its element."
   (if (listp thing)
@@ -49,93 +43,17 @@
       thing
     (prin1-to-string thing t)))
 
-(defun grc-any-p (pred lst)
-  "Applies pred to each item in lst, returning the first for which pred returns
-  true or nil."
-  (member* nil
-           lst
-           :test `(lambda (_ a) (,pred a))))
-
-(defun grc-flatten (x)
-  "Takes a nested list of lists and returns the contents as a single flat list.
-  (grc-flatten nil) returns nil"
-  (let ((lst x))
-    (while (grc-any-p 'listp lst)
-      (setq lst (apply #'append (mapcar 'grc-list lst))))
-    lst))
-
 (defun grc-get-in (alist seq &optional not-found)
   "Return the value in a nested alist structure.
 
   seq is a list of keys
   Returns nil or the not-found value if the key is not present"
-  (let ((val (reduce (lambda (a k)
-                       (cdr (assoc k a))) seq :initial-value alist)))
+  (let ((val (-reduce-from
+              (lambda (a k)
+                (cdr (assoc k a)))
+              alist
+              seq)))
     (or val not-found)))
-
-(defun grc-sort-fn (a b)
-  "Returns a sort function based on the type of the arguments"
-  (cond ((and (numberp a) (numberp b))
-         (lambda (x y)
-           (cond ((> x y) nil)
-                 ((< x y) t)
-                 (t 'equal))))
-        ((and (stringp a) (stringp b))
-         (lambda (x y)
-           (cond ((string< y x) nil)
-                 ((string< x y) t)
-                 (t 'equal))))
-        (t (error "Can't sort: %s (%s), %s (%s)"
-                  a (type-of a) b (type-of b)))))
-
-(defun grc-sort-by (key entries &optional reverse-result secondary-key)
-  "Sort a list of alists by a particular key.  Note that this converts alist
-  values to strings before sorting.
-
-  reverse-result will reverse the list prior to returning
-  secondary-key can be used to specify another field in the alist to sort by in
-  the case that two values are identical for the primary sort.  The order is
-  random in that case, otherwise."
-  (let ((sorted
-         (sort (copy-alist entries)
-               (lambda (x y)
-                 (let* ((a (cdr (assoc key x)))
-                        (b (cdr (assoc key y)))
-                        (r (funcall (grc-sort-fn a b) a b))
-                        (r (if (and secondary-key (equal r 'equal))
-                               (let* ((a2 (cdr (assoc secondary-key x)))
-                                      (b2 (cdr (assoc secondary-key y))))
-                                 (funcall (grc-sort-fn a2 b2) a2 b2))
-                             r)))
-                   (if (equal r 'equal) nil r))))))
-    (if reverse-result (reverse sorted) sorted)))
-
-(defun grc-group-by (key entries)
-  "Partition a list of alists based on the specified key.  Returns an alist
-  whose keys are the values of the specified key in the call to grc-group-by.
-
-  That is, given the list:
-  (((name . \"fred\") (age . 25))
-   ((name . \"barney\") (age . 25))
-   ((name . \"wilma\") (age . 22)))
-
-  (grc-group-by 'age the-list) will return:
-
-  ((22 ((name . \"wilma\")  (age . 22)))
-   (25 ((name . \"barney\") (age . 25))
-       ((name . \"fred\")   (age . 25)))) "
-  (let* ((groups (remq nil (remove-duplicates
-                            (mapcar (lambda (entry)
-                                      (grc-string (cdr (assoc key entry))))
-                                    entries)
-                            :test 'string=)))
-         (ret-list '()))
-    (mapcar (lambda (entry)
-              (let* ((group-name (cdr (assoc key entry)))
-                     (group (cdr (assoc group-name ret-list))))
-                (aput 'ret-list group-name (cons entry group))))
-            entries)
-    ret-list))
 
 (provide 'grc-lib)
 ;;; grc-lib.el ends here

@@ -78,12 +78,14 @@
   (let* ((plist (grc-instapaper-cred-plist))
          (username (plist-get plist :username))
          (password (plist-get plist :password)))
-    (dolist (entry (grc-list entries))
-      (grapnel-retrieve-url "https://www.instapaper.com/api/add"
-                            '((complete . (message "Sent to Instapaper")))
-                            `(("username" . ,username)
-                              ("password" . ,password)
-                              ("url"      . ,(cdr (assoc 'link entry))))))))
+    (-each
+     entries
+     (lambda (entry)
+       (grapnel-retrieve-url "https://www.instapaper.com/api/add"
+                             '((complete . (message "Sent to Instapaper")))
+                             `(("username" . ,username)
+                               ("password" . ,password)
+                               ("url"      . ,(cdr (assoc 'link entry)))))))))
 
 ;; Wire up the grc-list buffer
 (grc-list-def-fns "instapaper" "i" 'grc-instapaper-save-link)
@@ -132,13 +134,15 @@ Take the contents of the bookmarklet-id and use this function to enter it in."
   "Send the given ENTRIES to a Kindle via Instapaper.  Kindle support must be
 configured on instapaper.com before this will work."
   (let ((key (grc-instapaper-bookmarklet-key)))
-    (dolist (entry (grc-list entries))
-      (grapnel-retrieve-url
-       (concat "https://www.instapaper.com/j/" key)
-       '((complete . (message "Sent to Kindle via Instapaper")))
-       `(("a" . "send-to-kindle")
-         ("u" . ,(cdr (assoc 'link entry)))
-         ("t" . (ceiling (* (float-time) 100000))))))))
+    (-each
+     entries
+     (lambda (entry)
+       (grapnel-retrieve-url
+        (concat "https://www.instapaper.com/j/" key)
+        '((complete . (message "Sent to Kindle via Instapaper")))
+        `(("a" . "send-to-kindle")
+          ("u" . ,(cdr (assoc 'link entry)))
+          ("t" . (ceiling (* (float-time) 100000)))))))))
 
 (grc-list-def-fns "instapaper-kindle" "l" 'grc-instapaper-send-to-kindle)
 (define-key grc-list-mode-map "l" 'grc-list-mark-instapaper-kindle)

@@ -104,9 +104,8 @@
 
 (defun grc-list-has-read-overlay-p ()
   "Tests to see if the current line has the grc-read overlay"
-  (member-if
-   (lambda (o) (equal 'grc-read-face (overlay-get o 'face)))
-   (overlays-at (point))))
+  (-any? (lambda (o) (equal 'grc-read-face (overlay-get o 'face)))
+         (overlays-at (point))))
 
 (defun grc-list-add-read-overlay (&optional begin end)
   "Adds an overlay to the line that applies the grc-read-face to the text"
@@ -117,9 +116,10 @@
 
 (defun grc-list-remove-read-overlay ()
   "Removes the grc-read overlay from the line"
-  (dolist (overlay (overlays-at (point)))
-    (when (equal 'grc-read-face (overlay-get overlay 'face))
-      (delete-overlay overlay))))
+  (-each (overlays-at (point))
+         (lambda (overlay)
+           (when (equal 'grc-read-face (overlay-get overlay 'face))
+             (delete-overlay overlay)))))
 
 (defun grc-list-mark-region (tag begin end)
   (save-excursion
@@ -168,10 +168,12 @@
   (run-hooks 'grc-list-before-execute-marks-hook)
   (when (yes-or-no-p "Execute marks?")
     (let ((marked (grc-list-marked-lines)))
-      (dolist (mark-alist marked)
-        (let ((mark-type (car mark-alist))
-              (items (cdr mark-alist)))
-          (run-hook-with-args 'grc-list-execute-marks-hook mark-type items))))
+      (-each
+       marked
+       (lambda (mark-alist)
+         (let ((mark-type (car mark-alist))
+               (items (cdr mark-alist)))
+           (run-hook-with-args 'grc-list-execute-marks-hook mark-type items)))))
     (run-hooks 'grc-list-after-execute-marks-hook)))
 
 (defun grc-list-delete-read-lines ()

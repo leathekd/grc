@@ -32,6 +32,8 @@
 
 ;;; Code:
 (require 'cl)
+(require 'dash)
+(require 's)
 (require 'html2text)
 
 (require 'grc-lib)
