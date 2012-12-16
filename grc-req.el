@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t -*-
 ;;; grc-req.el --- Google Reader Mode for Emacs
 ;;
 ;; Copyright (c) 2011 David Leatherman
@@ -92,7 +93,7 @@
   (setq grc-token (or grc-token (grc-auth)))
   (let ((grapnel-options grc-req-curl-options)
         (failure-cb
-         (lambda (retryp resp resp-hdrs)
+         (lambda (resp resp-hdrs)
            ;; try reauthenticating
            (if retryp
                (error "Failed with: %s for %s"
@@ -112,7 +113,7 @@
     (grapnel-retrieve-url
      url
      `((success . ,callback)
-       (failure . ,(apply-partially failure-cb retryp))
+       (failure . ,failure-cb)
        (error . (lambda (resp exit-code) (error "Error: %s %s"
                                            response exit-code))))
      method
