@@ -10,7 +10,10 @@
 
 ;;; Commentary:
 
-;; Experimental support for sendint entries to Instapaper
+;; Experimental support for:
+;; - sending entries to Instapaper
+;; - sending entries to the Kindle via Instapaper
+;; - loading the full text of a linked page via Instapaper
 
 ;;; License:
 
@@ -156,9 +159,10 @@ configured on instapaper.com before this will work."
 
 (define-key grc-show-mode-map "l" 'grc-show-send-to-instapaper-kindle)
 
- ;; instapaper text
+ ;; Reload with the Instapaper stripped version of the linked page
+
 (defun grc-instapaper-clean-html-page ()
-  "Send the page to Instapaper and retrieve the cleaned up html."
+  "Send the page to Instapaper and display the cleaned up html."
   (interactive)
   (let* ((inhibit-read-only t)
          (entry (grc-show-current-entry))
@@ -174,20 +178,23 @@ configured on instapaper.com before this will work."
         (narrow-to-region pt (point-max))
         (insert html)
         (goto-char (point-min))
-        (when (equal grc-show-summary-renderer 'grc-show-basic-renderer)
-          (let* ((pattern "id.*?controlbar_container")
-                 (pt (search-forward-regexp pattern nil t)))
-            (when pt
-              (let ((begin (search-backward "<div")))
-                (sgml-skip-tag-forward 1)
-                (delete-region begin (point))))))
         (grc-show-render-summary)
         (put-text-property pt (point-max) 'grc-current-entry-body t)
         (put-text-property (point-min) (point-max) 'grc-current-entry entry)
         (goto-char (point-min))))))
+
+(defun grc-instapaper-basic-strip-controls ()
+  (goto-char (point-min))
+  (when (search-forward-regexp "id.*?controlbar_container" nil t)
+    (let ((begin (search-backward "<div")))
+      (sgml-skip-tag-forward 1)
+      (delete-region begin (point)))))
+
+(add-hook 'grc-basic-before-render-hook 'grc-instapaper-basic-strip-controls)
 
 (define-key grc-show-mode-map "t" 'grc-instapaper-clean-html-page)
 
  ;; and finally...
 
 (provide 'grc-instapaper)
+;;; grc-instapaper.el ends here

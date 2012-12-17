@@ -120,11 +120,13 @@
   (backward-button 1 t t))
 
 (defun grc-show-basic-renderer ()
+  (run-hooks 'grc-basic-before-render-hook)
   (grc-basic-buttonify-anchors)
   (grc-basic-insert-newlines)
   (goto-char (point-min))
   (grc-basic-strip-html)
-  (fill-region (point-min) (point-max)))
+  (fill-region (point-min) (point-max))
+  (run-hooks 'grc-basic-after-render-hook))
 
 (setq grc-prepare-text-fn 'grc-basic-prepare-text
       grc-show-summary-renderer 'grc-show-basic-renderer
