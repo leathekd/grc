@@ -140,6 +140,7 @@ configured on instapaper.com before this will work."
        (grapnel-retrieve-url
         (concat "https://www.instapaper.com/j/" key)
         '((complete . (message "Sent to Kindle via Instapaper")))
+        "GET"
         `(("a" . "send-to-kindle")
           ("u" . ,(cdr (assoc 'link entry)))
           ("t" . (ceiling (* (float-time) 100000)))))))))
@@ -154,6 +155,38 @@ configured on instapaper.com before this will work."
   (grc-instapaper-send-to-kindle (list (grc-show-current-entry))))
 
 (define-key grc-show-mode-map "l" 'grc-show-send-to-instapaper-kindle)
+
+ ;; instapaper text
+(defun grc-instapaper-clean-html-page ()
+  "Send the page to Instapaper and retrieve the cleaned up html."
+  (interactive)
+  (let* ((inhibit-read-only t)
+         (entry (grc-show-current-entry))
+         (pt (next-single-property-change (point-min) 'grc-current-entry-body))
+         (html (grapnel-retrieve-url-sync
+                (concat "https://www.instapaper.com/text/")
+                '((complete . (lambda (r h) r)))
+                "GET"
+                `(("u" . ,(cdr (assoc 'link entry)))))))
+    (when (and pt html)
+      (save-restriction
+        (delete-region pt (point-max))
+        (narrow-to-region pt (point-max))
+        (insert html)
+        (goto-char (point-min))
+        (when (equal grc-show-summary-renderer 'grc-show-basic-renderer)
+          (let* ((pattern "id.*?controlbar_container")
+                 (pt (search-forward-regexp pattern nil t)))
+            (when pt
+              (let ((begin (search-backward "<div")))
+                (sgml-skip-tag-forward 1)
+                (delete-region begin (point))))))
+        (grc-show-render-summary)
+        (put-text-property pt (point-max) 'grc-current-entry-body t)
+        (put-text-property (point-min) (point-max) 'grc-current-entry entry)
+        (goto-char (point-min))))))
+
+(define-key grc-show-mode-map "t" 'grc-instapaper-clean-html-page)
 
  ;; and finally...
 
