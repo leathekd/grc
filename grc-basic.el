@@ -1,12 +1,23 @@
 (autoload 's-trim "s.el")
 
-(defvar grc-basic-html-entity-list
-  '(("&amp;" "&")
-    ("&apos;" "'")
-    ("&#39;" "'")
-    ("&gt;" ">")
-    ("&lt;" "<")
-    ("&quot;" "\"")))
+(defvar grc-basic-html-entity-list nil)
+
+(setq grc-basic-html-entity-list
+      '(("&nbsp;" "") ;; do I need these spaces?
+        ("&amp;" "&")
+        ("&apos;" "'")
+        ("&#39;" "'")
+        ("&#8217;" "'")
+        ("&prime;" "'")
+        ("&gt;" ">")
+        ("&lt;" "<")
+        ("&quot;" "\"")
+        ("&#8220;" "\"")
+        ("&#8221;" "\"")
+        ("&ldquo;" "\"")
+        ("&rdquo;" "\"")
+        ("&mdash;" "—")
+        ("&#9670;" "©")))
 
 (defun grc-basic-convert-entities ()
   "Searches through the buffer replacing common HTML entities with their chars"
