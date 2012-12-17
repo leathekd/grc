@@ -43,14 +43,23 @@
     (goto-char (point-min))
     (delete-char 1)))
 
+(defun grc-basic-strip-tag (tag)
+  (goto-char (point-min))
+  (let ((pt (search-forward (concat "<" tag) nil t)))
+    (while pt
+      (delete-region (- pt (1+ (length tag)))
+                     (search-forward (concat "</" tag ">") nil t))
+      (setq pt (search-forward (concat "<" tag) nil t)))))
+
 (defun grc-basic-strip-html ()
   "Converts some HTML entities and naively removes HTML tags."
-  (save-excursion
-    (grc-basic-convert-entities)
-    (goto-char (point-min))
-    (grc-replace-regexp "<.*?>" "")
-    (grc-basic-trim-left-in-buffer)
-    (grc-basic-normalize-newlines)))
+  (grc-basic-convert-entities)
+  (-each '("head" "style" "script" "input" "select" "textarea") 'grc-basic-strip-tag)
+  (goto-char (point-min))
+  (grc-replace-regexp "<.*?>" "")
+  (grc-basic-trim-left-in-buffer)
+  (grc-basic-normalize-newlines)
+  (goto-char (point-min)))
 
 (defun grc-basic-strip-html-to-string (str)
   "Takes a string and returns it stripped of HTML"
