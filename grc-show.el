@@ -43,10 +43,6 @@
 
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
-(defvar grc-show-header-renderer 'grc-show-w3m-header-renderer
-  "The function to call to render the header. Is called with the show buffer
-active and is passed the entry object")
-
 (defvar grc-show-summary-renderer 'grc-show-w3m-renderer
   "The function to call to render the summary (text) of the entry. Is called
 with the show buffer active, the summary already inserted, and the view narrowed
@@ -68,7 +64,43 @@ foreground color"
   (propertize keyword 'face (grc-highlight-make-face keyword)))
 
 (defun grc-show-render-header (entry)
-  (funcall grc-show-header-renderer entry))
+  "Render the header with colored labels and some info about next and previous
+stories"
+  (let ((next-entry (with-current-buffer grc-list-buffer
+                      (save-excursion
+                        (forward-line)
+                        (tabulated-list-get-id))))
+        (prev-entry (with-current-buffer grc-list-buffer
+                      (save-excursion
+                        (goto-char (line-beginning-position))
+                        (unless (bobp)
+                          (forward-line -1)
+                          (tabulated-list-get-id))))))
+    (mapcar (lambda (lst)
+              (insert (format "%s: %s\n"
+                              (car lst)
+                              (grc-prepare-text (cadr lst)))))
+            `((,(propertize "Title" 'face 'grc-show-header-face)
+               ,(cdr (assoc 'title entry)))
+              (,(propertize "Date" 'face 'grc-show-header-face)
+               ,(format-time-string
+                 "%a %m/%d %l:%M %p"
+                 (seconds-to-time (cdr (assoc 'date entry)))))
+              (,(propertize "Source" 'face 'grc-show-header-face)
+               ,(grc-propertize-keyword (cdr (assoc 'src-title entry))))
+              (,(propertize "Next Story" 'face 'grc-show-context-face)
+               ,(if next-entry
+                    (concat (cdr (assoc 'title next-entry))
+                            " [" (grc-propertize-keyword
+                                  (cdr (assoc 'src-title next-entry))) "]")
+                  "None"))
+              (,(propertize "Previous Story" 'face 'grc-show-context-face)
+               ,(if prev-entry
+                    (concat (cdr (assoc 'title prev-entry))
+                            " [" (grc-propertize-keyword
+                                  (cdr (assoc 'src-title prev-entry))) "]")
+                  "None"))))
+    (insert "\n")))
 
 (defun grc-show-render-summary ()
   (funcall grc-show-summary-renderer))
