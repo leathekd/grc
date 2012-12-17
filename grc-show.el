@@ -43,19 +43,19 @@
 
 (defvar grc-show-buffer "*grc show*" "Name of the buffer for the grc show view")
 
-(defvar grc-show-summary-renderer 'grc-show-w3m-renderer
+(defvar grc-show-summary-renderer 'grc-show-basic-renderer
   "The function to call to render the summary (text) of the entry. Is called
 with the show buffer active, the summary already inserted, and the view narrowed
 to just the summary.")
 
-(defvar grc-show-external-link-viewer 'w3m-external-view-this-url
+(defvar grc-show-external-link-viewer 'grc-basic-external-view-this-url
   "The function that is called to view the current line's entry in an external
 browser")
 
-(defvar grc-show-next-anchor-fn 'w3m-next-anchor
+(defvar grc-show-next-anchor-fn 'grc-basic-next-anchor
   "The function called to move the cursor to the next anchor")
 
-(defvar grc-show-previous-anchor-fn 'w3m-previous-anchor
+(defvar grc-show-previous-anchor-fn 'grc-basic-previous-anchor
   "The function called to move the cursor to the previous anchor")
 
 (defun grc-propertize-keyword (keyword)
@@ -189,20 +189,15 @@ stories"
       (when (eobp)
         (grc-show-next-entry)))))
 
-(defun grc-show-external-view-url ()
-  "Load the URL/anchor under point in an external browser."
-  (interactive)
-  (funcall grc-show-external-link-viewer))
-
 (defun grc-show-next-anchor ()
   "Move the point to the next anchor."
   (interactive)
-  (funcall grc-show-next-anchor))
+  (funcall grc-show-next-anchor-fn))
 
 (defun grc-show-previous-anchor ()
   "Move the point to the previous anchor."
   (interactive)
-  (funcall grc-show-previous-anchor))
+  (funcall grc-show-previous-anchor-fn))
 
 (defvar grc-show-mode-map
   (let ((map (make-sparse-keymap)))
@@ -215,7 +210,6 @@ stories"
     (define-key map "n"               'grc-show-next-entry)
     (define-key map "p"               'grc-show-previous-entry)
     (define-key map "v"               'grc-show-view-external)
-    (define-key map (kbd "RET")       'grc-show-external-view-url)
     (define-key map (kbd "TAB")       'grc-show-next-anchor)
     (define-key map (kbd "<backtab>") 'grc-show-previous-anchor)
     map)

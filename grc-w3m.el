@@ -48,5 +48,11 @@ TEXT as an arg and returns the processed text."
         (w3m-fill-column 72))
     (w3m-region (point-min) (point-max))))
 
+(setq grc-prepare-text-fn 'grc-w3m-prepare-text
+      grc-show-summary-renderer 'grc-show-w3m-renderer
+      grc-show-external-link-viewer 'w3m-external-view-this-url
+      grc-show-next-anchor-fn 'w3m-next-anchor
+      grc-show-previous-anchor-fn 'w3m-previous-anchor)
+
 (provide 'grc-w3m)
 ;;; grc-w3m.el ends here

@@ -76,7 +76,7 @@
 (defvar grc-state-alist '("Kept Unread" "Read" "Reading List" "Starred"))
 (defvar grc-current-state "reading-list")
 
-(defvar grc-prepare-text-fn 'grc-w3m-prepare-text)
+(defvar grc-prepare-text-fn 'grc-basic-prepare-text)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
