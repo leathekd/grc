@@ -117,7 +117,7 @@
        (error . (lambda (resp exit-code) (error "Error: %s %s"
                                            response exit-code))))
      method
-     (append (or params '())
+     (append params
              `((client . ,grc-req-client-name)
                (ck . ,(grc-string (floor
                                    (* 1000000 (float-time)))))
@@ -149,7 +149,7 @@
 
 (defun grc-req-mark (ids feeds params)
   (let ((params (append params
-                        (("T" . (plist-get grc-token :action-token)))
+                        `(("T" . ,(plist-get grc-token :action-token)))
                         (mapcar (lambda (i) `("i" . ,i)) ids)
                         (mapcar (lambda (s) `("s" . ,s)) feeds))))
     (grc-req-request grc-req-edit-tag-url '(lambda (&rest x))
