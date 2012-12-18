@@ -118,8 +118,7 @@
                                            response exit-code))))
      method
      (append (or params '())
-             `(("T" . ,(plist-get grc-token :action-token))
-               (client . ,grc-req-client-name)
+             `((client . ,grc-req-client-name)
                (ck . ,(grc-string (floor
                                    (* 1000000 (float-time)))))
                (output . "json")))
@@ -150,6 +149,7 @@
 
 (defun grc-req-mark (ids feeds params)
   (let ((params (append params
+                        (("T" . (plist-get grc-token :action-token)))
                         (mapcar (lambda (i) `("i" . ,i)) ids)
                         (mapcar (lambda (s) `("s" . ,s)) feeds))))
     (grc-req-request grc-req-edit-tag-url '(lambda (&rest x))
@@ -172,6 +172,22 @@
 (defun grc-req-mark-starred (ids feeds &optional remove-p)
   (grc-req-mark ids feeds
                 `(((if remove-p "r" "a") . "user/-/state/com.google/starred"))))
+
+(defun grc-req-unread-count (callback)
+  (grc-req-request
+   "https://www.google.com/reader/api/0/unread-count"
+   (lambda (response headers)
+     (let* ((json-array-type 'list))
+       (with-current-buffer grc-list-buffer
+         (funcall callback
+                  (or (car (sort
+                            (->> (json-read-from-string
+                                  (decode-coding-string response 'utf-8))
+                              (assoc 'unreadcounts)
+                              (cdr)
+                              (mapcar (lambda (x) (cdr (assoc 'count x)))))
+                            '>))
+                      0)))))))
 
 (provide 'grc-req)
 ;;; grc-req.el ends here

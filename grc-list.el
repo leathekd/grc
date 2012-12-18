@@ -32,6 +32,23 @@
 ;;; Code:
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 
+(defun grc-list-header-line (&optional unread-count)
+  "Set the header line for the grc-list-buffer"
+  (setq header-line-format
+        (format "%s  (%s)  Sort: %s %s"
+                (cdr (assoc 'title grc-raw-response))
+                (if unread-count
+                    (let ((lines (count-lines (point-min) (point-max))))
+                      (if (> unread-count lines)
+                          (format "%s/%s" lines unread-count)
+                        unread-count))
+                    "...")
+                (car tabulated-list-sort-key)
+                (if (cdr tabulated-list-sort-key) "▲" "▼")))
+  ;; fetch the actual count
+  (unless unread-count
+    (grc-req-unread-count 'grc-list-header-line)))
+
 (defun grc-list-entry-data (e)
   "Calculate the data to print"
   (let ((id (cdr (assoc 'id e))))
@@ -73,6 +90,7 @@
       (if (< 0 (length entries))
           (grc-list-print-entries entries)
         (insert "No unread entries."))
+      (grc-list-header-line)
       (goto-char (point-min)))))
 
 (defun grc-list-refresh ()
@@ -312,7 +330,6 @@ view buffer or externally in the browser"
         tabulated-list-sort-key (cons "Date" nil)
         tabulated-list-padding 2
         truncate-lines t)
-  (tabulated-list-init-header)
   (use-local-map grc-list-mode-map))
 
 (defun grc-list-enable-hl-line ()
