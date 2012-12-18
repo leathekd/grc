@@ -37,12 +37,12 @@
   (setq header-line-format
         (format "%s  (%s)  Sort: %s %s"
                 (cdr (assoc 'title grc-raw-response))
-                (if unread-count
-                    (let ((lines (count-lines (point-min) (point-max))))
+                (let ((lines (count-lines (point-min) (point-max))))
+                  (if unread-count
                       (if (> unread-count lines)
                           (format "%s/%s" lines unread-count)
-                        unread-count))
-                    "...")
+                        unread-count)
+                    lines))
                 (car tabulated-list-sort-key)
                 (if (cdr tabulated-list-sort-key) "▲" "▼")))
   ;; fetch the actual count
@@ -207,6 +207,7 @@
   (grc-list-mark-region " " (point-min) (point-max)))
 
 (add-hook 'grc-list-after-execute-marks-hook 'grc-list-clear-marks t)
+(add-hook 'grc-list-after-execute-marks-hook 'grc-list-header-line t)
 
 (defmacro grc-list-defun-mark-for (name tag)
   "Define a function to mark entries"
