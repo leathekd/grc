@@ -196,9 +196,9 @@
   (let ((inhibit-read-only t))
     (goto-char (point-min))
     (while (not (eobp))
-      (when (grc-list-has-read-overlay-p)
-        (delete-region (line-beginning-position) (1+ (line-end-position))))
-      (forward-line)))
+      (if (grc-list-has-read-overlay-p)
+          (delete-region (line-beginning-position) (1+ (line-end-position)))
+        (forward-line))))
   (goto-char (point-min)))
 
 (add-hook 'grc-list-after-execute-marks-hook 'grc-list-delete-read-lines)
