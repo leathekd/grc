@@ -43,7 +43,6 @@
     (grapnel-retrieve-url-sync
      "https://www.instapaper.com/api/authenticate"
      '((success . (lambda (r h)
-                    (message "resp: %s headers: %s" r h)
                     t))
        (failure . (lambda (_ _) nil))
        (error
