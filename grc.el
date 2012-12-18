@@ -60,23 +60,20 @@
   :type 'integer
   :group 'grc)
 
-(defvar grc-google-categories
-  '(("fresh"                      . "Fresh")
-    ("kept-unread"                . "Kept Unread")
-    ("read"                       . "Read")
-    ("reading-list"               . "Reading List")
-    ("starred"                    . "Starred")
-    ("tracking-body-link-used"    . "Tracking Body Link Used")
-    ("tracking-emailed"           . "Tracking Email")
-    ("tracking-item-link-used"    . "Tracking Item Link Used")
-    ("tracking-kept-unread"       . "Tracking Kept Unread")
-    ("tracking-mobile-read"       . "Tracking Mobile Read"))
-  "list of the categories that google adds to entries")
+(defvar grc-state-alist
+  '(("Unread" . ((name . "Unread")
+                 (id . "reading-list")
+                 (fn . grc-req-unread-entries)))
+    ("Starred" . ((name . "Starred")
+                  (id . "starred")))
+    ("Kept Unread" . ((name . "Kept Unread")
+                      (id . "kept-unread")))
+    ("Read" . ((name . "Read")
+               (id . "read")))))
 
-(defvar grc-state-alist '("Kept Unread" "Read" "Reading List" "Starred"))
-(defvar grc-current-state "reading-list")
-
+(defvar grc-current-state nil)
 (defvar grc-prepare-text-fn 'grc-basic-prepare-text)
+(defvar grc-read-history nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Display functions
@@ -93,32 +90,36 @@
 (defun grc-prepare-text (text)
   (funcall grc-prepare-text-fn text))
 
-(defun grc-read-state (prompt)
+(defun grc-read-state ()
   "Return state name read from minibuffer."
   (let ((grc-read-history '())
-        (choices (sort (copy-list grc-state-alist) 'string<))
-        (completing-read-fn (if (featurep 'ido)
-                                'ido-completing-read
-                              'completing-read)))
-    (car (rassoc (apply completing-read-fn prompt choices
-                        nil 'require-match nil grc-read-history)
-                 grc-google-categories))))
+        (choices (sort (mapcar
+                        (lambda (state-alist) (car state-alist))
+                        grc-state-alist)
+                       'string<)))
+    (cdr (assoc (completing-read "State: " choices
+                                 nil 'require-match nil grc-read-history)
+                grc-state-alist))))
+
+(defun grc-fetch-entries ()
+  (let ((fn (or (cdr (assoc 'fn grc-current-state)) 'grc-req-fetch-entries)))
+    (grc-list-make-buffer "Fetching entries...")
+    (switch-to-buffer grc-list-buffer)
+    (funcall fn (cdr (assoc 'id grc-current-state))
+             '(lambda (response headers)
+                (let ((response (grc-req-parse-response response)))
+                  (grc-list-display response))))))
 
 ;;;###autoload
-(defun grc (&optional state)
+(defun grc (&optional prefixed-p)
   "Display or refresh the grc reading list.  Main entry function."
   (interactive "P")
-  (setq grc-current-state (if (and state (interactive-p))
-                              (grc-read-state "State: ")
+  (setq grc-current-state (if prefixed-p
+                              (grc-read-state)
                             grc-current-state))
   (if (get-buffer grc-list-buffer)
       (switch-to-buffer grc-list-buffer)
-    (progn (grc-list-make-buffer "Fetching entries...")
-           (switch-to-buffer grc-list-buffer)
-           (grc-req-unread-entries
-            '(lambda (response headers)
-               (let ((response (grc-req-parse-response response)))
-                 (grc-list-display response)))))))
+    (grc-fetch-entries)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; General view functions

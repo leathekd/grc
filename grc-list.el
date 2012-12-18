@@ -80,10 +80,7 @@
   (let ((inhibit-read-only t))
     (erase-buffer)
     (insert "Fetching entries...")
-    (grc-req-unread-entries
-     '(lambda (response headers)
-        (let ((response (grc-req-parse-response response)))
-          (grc-list-display response))))))
+    (grc-fetch-entries)))
 
 (defun grc-list-next-entry ()
   "Move the point to the next entry."
