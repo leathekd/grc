@@ -33,6 +33,7 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
+(autoload 'sgml-skip-tag-forward "sgml-mode.el")
 
  ;; Credential management
 
