@@ -89,27 +89,27 @@
    params "&"))
 
 (defun grc-req-request (url callback &optional
-                            method params post-body headers retryp)
+                            method params post-body headers retry-count)
   (setq grc-token (or grc-token (grc-auth)))
   (let ((grapnel-options grc-req-curl-options)
         (failure-cb
          (lambda (resp resp-hdrs)
            ;; try reauthenticating
-           (if retryp
+           (if (> (or retry-count 0) 2)
                (error "Failed with: %s for %s"
                       (cadr (assoc "response-code" resp-hdrs))
                       url)
-             (progn
-               (grc-refresh-access-token
-                grc-token
-                (lambda () (grc-req-request url callback method
-                                       params post-body headers t)))
-               (when (cdr (assoc "X-Reader-Google-Bad-Token" resp-hdrs))
+             (if (cdr (assoc "X-Reader-Google-Bad-Token" resp-hdrs))
                  (grc-refresh-action-token
-                  grc-token
                   (lambda ()
                     (grc-req-request url callback method
-                                     params post-body headers t)))))))))
+                                         params post-body headers
+                                         (1+ (or retry-count 0)))))
+               (grc-refresh-access-token
+                (lambda ()
+                  (grc-req-request url callback method
+                                       params post-body headers
+                                       (1+ (or retry-count 0))))))))))
     (grapnel-retrieve-url
      url
      `((success . ,callback)
