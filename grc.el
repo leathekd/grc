@@ -43,7 +43,7 @@
 (require 'grc-highlight)
 (require 'grc-list)
 (require 'grc-show)
-(require 'grc-w3m)
+(require 'grc-basic)
 
 (defgroup grc nil "Google Reader Client for Emacs")
 
