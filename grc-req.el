@@ -121,7 +121,9 @@
              `((client . ,grc-req-client-name)
                (ck . ,(grc-string (floor
                                    (* 1000000 (float-time)))))
-               (output . "json")))
+               (output . "json"))
+             (when (equal "POST" method)
+                 `(("T" . ,(plist-get grc-token :action-token)))))
      post-body
      (append
       `(("Authorization" . ,(format "OAuth %s"
@@ -149,7 +151,6 @@
 
 (defun grc-req-mark (ids feeds params)
   (let ((params (append params
-                        `(("T" . ,(plist-get grc-token :action-token)))
                         (mapcar (lambda (i) `("i" . ,i)) ids)
                         (mapcar (lambda (s) `("s" . ,s)) feeds))))
     (grc-req-request grc-req-edit-tag-url '(lambda (&rest x))
