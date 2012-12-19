@@ -65,19 +65,18 @@
                   plist)
               (error "Auth failed. client id or secret may be wrong")))))))
 
-(defun grc-refresh-access-token (token callback)
-  "Refresh the access token from Google.
-  TOKEN refers to the plist returned by grc-auth"
+(defun grc-refresh-access-token (callback)
+  "Refresh the access token from Google. Updates grc-token."
   (let ((grapnel-options grc-req-curl-options))
     (grapnel-retrieve-url
      grc-token-url
      `((success . (lambda (response headers)
-                      (setq grc-token
-                            (plist-put
-                             ',token :access-token
-                             (cdr (assoc 'access_token
-                                         (json-read-from-string response)))))
-                      (funcall ',callback)))
+                    (setq grc-token
+                          (plist-put
+                           grc-token :access-token
+                           (cdr (assoc 'access_token
+                                       (json-read-from-string response)))))
+                    (funcall ',callback)))
        (failure . (lambda (response headers)
                     (error "Failed with: %s for %s"
                            (cadr (assoc "response-code" headers))
@@ -85,29 +84,29 @@
        (error . (lambda (resp exit-code) (error "Error: %s %s"
                                            response exit-code))))
      "POST" nil
-     `(("client_id" . ,(plist-get token :client-id))
-       ("client_secret" . ,(plist-get token :client-secret))
-       ("refresh_token" . ,(plist-get token :refresh-token))
+     `(("client_id" . ,(plist-get grc-token :client-id))
+       ("client_secret" . ,(plist-get grc-token :client-secret))
+       ("refresh_token" . ,(plist-get grc-token :refresh-token))
        ("grant_type" . "refresh_token")))))
 
-(defun grc-refresh-action-token (token callback)
-  "Refresh the action token from Google.
-  TOKEN refers to the plist returned by grc-auth"
+(defun grc-refresh-action-token (callback)
+  "Refresh the action token from Google. Updates grc-token."
   (let ((grapnel-options grc-req-curl-options))
     (grapnel-retrieve-url
      grc-action-token-url
      `((success . (lambda (response headers)
-                      (setq grc-token (plist-put ',token :action-token response))
-                      (funcall ',callback)))
+                    (setq grc-token
+                          (plist-put grc-token :action-token response))
+                    (funcall ',callback)))
        (failure . (lambda (response headers)
-                    (error "Failed with: %s for %s"
+                    (error "grc-refresh-action-token failed with: %s for %s"
                            (cadr (assoc "response-code" headers))
                            ,grc-action-token-url)))
        (error . (lambda (resp exit-code) (error "Error: %s %s"
                                            response exit-code))))
      nil nil nil
      `(("Authorization" .
-        ,(concat "OAuth " (plist-get token :access-token)))))))
+        ,(concat "OAuth " (plist-get grc-token :access-token)))))))
 
 (provide 'grc-auth)
 ;;; grc-auth.el ends here
