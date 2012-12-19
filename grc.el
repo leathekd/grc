@@ -71,7 +71,7 @@
     ("Read" . ((name . "Read")
                (id . "read")))))
 
-(defvar grc-current-state nil)
+(defvar grc-current-state (cdr (assoc "Unread" grc-state-alist)))
 (defvar grc-prepare-text-fn 'grc-basic-prepare-text)
 (defvar grc-read-history nil)
 
