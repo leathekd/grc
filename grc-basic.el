@@ -100,7 +100,7 @@
   (with-temp-buffer
     (insert str)
     (grc-basic-strip-html)
-    (buffer-string)))
+    (s-trim (buffer-string))))
 
 (defun grc-basic-insert-newlines ()
   (goto-char (point-min))
