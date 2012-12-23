@@ -105,7 +105,7 @@
                                  nil 'require-match nil grc-read-history)
                 grc-state-alist))))
 
-(defun grc-fetch-entries ()
+(defun grc-fetch-entries (&optional params)
   (let ((fn (or (cdr (assoc 'fn grc-current-state)) 'grc-req-fetch-entries)))
     (grc-list-make-buffer "Fetching entries...")
     (switch-to-buffer grc-list-buffer)

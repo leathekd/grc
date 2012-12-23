@@ -130,10 +130,10 @@
                                     (plist-get grc-token :access-token))))
       headers))))
 
-(defun grc-req-fetch-entries (state callback &optional limit since addl-params)
+(defun grc-req-fetch-entries (state callback &optional limit since params)
   (let* (;; the number of items to return
-         (params `(("n" . ,(format "%s" (or limit grc-fetch-count)))))
-         (params (append params addl-params))
+         (params (append `(("n" . ,(format "%s" (or limit grc-fetch-count))))
+                         params))
          ;; the oldest in which I'm interested
          (params (if since
                      (cons `("ot" . ,(format "%s" since)) params)
@@ -144,10 +144,12 @@
                              `(;; ranking method- newest first
                                ("r" . "n"))))))
 
-(defun grc-req-unread-entries (state callback &optional limit since)
+(defun grc-req-unread-entries (state callback &optional limit since params)
   (grc-req-fetch-entries state callback limit since
-                         `(;; exclude read entries
-                           ("xt" . "user/-/state/com.google/read"))))
+                         (append
+                          `(;; exclude read entries
+                            ("xt" . "user/-/state/com.google/read"))
+                          params)))
 
 (defun grc-req-mark (ids feeds params)
   (let ((params (append params
