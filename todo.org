@@ -1,31 +1,11 @@
-* General
-** TODO tests.
-** TODO Code cleanup
-*** TODO grc-show-foo and grc-list-foo are usually only different in how they get the current entry. 
-** TODO test without ido enabled.
-* Both list and show
-** TODO handle html entities w/o w3m
-** DONE Comment view (to keep up with ongoing discussion)
-** DONE share
-** DONE share with note - edit w/ snippet=note
-** TODO emailing (doesn't seem like I can use the same method google uses)
-** TODO feed icons?
-** TODO comment icon, user pictures with comments?
-* List view
-** TODO pagination
-** DONE add counts to header line
-** DONE add new comments indicator to header line
-** TODO add years when looking at older posts
-** TODO operations on regions (read, etc)
-** TODO flexible columns? - calc max col sizes upfront
-** TODO investigate other ways of refreshing view (delete lines, etc)
-   for refreshing a line - modify entry, delete line, redraw
-** TODO search
-* Show view
-** DONE fill-buffer to prevent long lines
-** DONE fix rendering without w3m
-** TODO links should respond to mouse clicks
-** DONE add comment
-* Request
-** TODO Should grc-req contain low level stuff (get, post) or
-   higher level stuff (mark-all-read), or both?  It's inbetween now...
+** TODO update © notices
+** TODO see if ucs-insert can handle some html entities
+   For example (ucs-insert 8216) see the ucs-insert docs for how to
+   handle hex and octal
+** WONTFIX Add a "fetch more" line at the end of the buffer
+   Not sure about this one as marking read and refreshing might be sufficient
+   only when the fetch window is less than the total number
+** DONE load all rows in batches
+*** DONE Implement incremental fetches with continuation tokens
+** TODO Make the sort area of the header clickable
+** TODO add 'o' keybinding to change order as well
