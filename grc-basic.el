@@ -133,7 +133,7 @@
                          'help-echo href
                          'type 'grc-basic-link-button)))))))
 
-(defun grc-button-browse-url (overlay)
+(defun grc-basic-button-browse-url (overlay)
   (browse-url (overlay-get overlay 'url)))
 
 (define-button-type 'grc-basic-link-button

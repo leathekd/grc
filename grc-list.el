@@ -247,7 +247,7 @@ to wire it all together"
          (add-hook 'grc-list-execute-marks-hook ',hook-name)))))
 
 ;; Declare all the mark fns and execution handlers
-(grc-list-def-fns "unread" " ")
+(grc-list-def-fns "unmark" " ")
 (grc-list-def-fns "read" "r" 'grc-mark-read)
 (grc-list-def-fns "kept-unread" "k" 'grc-mark-kept)
 (grc-list-def-fns "starred" "s" 'grc-mark-starred)
@@ -262,7 +262,7 @@ to wire it all together"
   "Open the current rss entry in the default emacs browser"
   (interactive)
   (when (tabulated-list-get-id)
-    (grc-show-external (tabulated-list-get-id))))
+    (grc-view-external (tabulated-list-get-id))))
 
 (defun grc-list-after-show ()
   "Add the read overlay and mark an entry as read when it is opened in the
