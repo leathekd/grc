@@ -87,6 +87,10 @@
   (while (search-forward-regexp regexp nil t)
     (replace-match to-string nil t)))
 
+(defun grc-prepare-title (title)
+  (replace-regexp-in-string
+   "[\n]" " " (funcall grc-prepare-text-fn title)))
+
 (defun grc-prepare-text (text)
   (funcall grc-prepare-text-fn text))
 

@@ -79,7 +79,7 @@ stories"
     (mapcar (lambda (lst)
               (insert (format "%s: %s\n"
                               (car lst)
-                              (grc-prepare-text (cadr lst)))))
+                              (grc-prepare-title (cadr lst)))))
             `((,(propertize "Title" 'face 'grc-show-header-face)
                ,(cdr (assoc 'title entry)))
               (,(propertize "Date" 'face 'grc-show-header-face)
@@ -230,7 +230,7 @@ stories"
   v      Load the current entry in an external browser.
   p      View the previous entry.
   n      View the next entry.
-  *      Star the current entry.  Use the prefix operator to un-star.
+  *      Star the current entry.
   r      Mark the current entry as Read.
   k      Mark the current entry as Keep Unread.
   q      Close the show buffer and return to the list buffer.

@@ -61,7 +61,7 @@
                              "%a %H:%M")
                            date))
                    (src (grc-prepare-text (cdr (assoc 'src-title e))))
-                   (title (grc-prepare-text (cdr (assoc 'title e)))))
+                   (title (grc-prepare-title (cdr (assoc 'title e)))))
               (vector d-str
                       (propertize src 'face (grc-highlight-make-face src))
                       title)))))
