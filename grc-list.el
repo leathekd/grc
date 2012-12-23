@@ -81,6 +81,43 @@
         (insert msg))
       (buffer-name))))
 
+(defun grc-list-apply-marks (marks)
+  (save-excursion
+    (goto-char (point-min))
+    (while (not (eobp))
+      (let* ((id (tabulated-list-get-id))
+             (tag (some
+                   (lambda (l)
+                     (let ((tag (car l))
+                           (lst (cdr l)))
+                       (when (member id lst)
+                         tag)))
+                   marks)))
+        (when tag
+          (tabulated-list-put-tag tag)))
+      (forward-line))))
+
+(defun grc-list-fetch-more ()
+  (let ((fn (or (cdr (assoc 'fn grc-current-state)) 'grc-req-fetch-entries)))
+    (funcall fn (cdr (assoc 'id grc-current-state))
+             '(lambda (raw-response headers)
+                (when (get-buffer grc-list-buffer)
+                  (with-current-buffer grc-list-buffer
+                    (let ((response (grc-req-parse-response raw-response))
+                          (marked-items (grc-list-marked-lines)))
+                      ;; append to tab-list-entries and display
+                      (setq tabulated-list-entries
+                            (append tabulated-list-entries
+                                    (mapcar 'grc-list-entry-data response)))
+                      (tabulated-list-print t)
+                      (grc-list-header-line)
+                      ;; keep going if there are more
+                      (if (cdr (assoc 'continuation grc-raw-response))
+                          (grc-list-fetch-more)
+                        (grc-list-apply-marks marked-items))))))
+             nil nil
+             `(("c" . ,(cdr (assoc 'continuation grc-raw-response)))))))
+
 (defun grc-list-display (&optional entries)
   "Display the given entries in the grc-list-buffer"
   (interactive)
@@ -88,7 +125,10 @@
     (let ((inhibit-read-only t))
       (erase-buffer)
       (if (< 0 (length entries))
-          (grc-list-print-entries entries)
+          (progn
+            (grc-list-print-entries entries)
+            (when (cdr (assoc 'continuation grc-raw-response))
+              (grc-list-fetch-more)))
         (insert "No unread entries."))
       (grc-list-header-line)
       (goto-char (point-min)))))
