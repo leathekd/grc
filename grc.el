@@ -60,6 +60,11 @@
   :type 'integer
   :group 'grc)
 
+(defcustom grc-max-fetch-count 250
+  "The maximum number of items to fetch."
+  :type 'integer
+  :group 'grc)
+
 (defvar grc-state-alist
   '(("Unread" . ((name . "Unread")
                  (id . "reading-list")

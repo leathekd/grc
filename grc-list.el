@@ -112,7 +112,9 @@
                       (tabulated-list-print t)
                       (grc-list-header-line)
                       ;; keep going if there are more
-                      (if (cdr (assoc 'continuation grc-raw-response))
+                      (if (and (cdr (assoc 'continuation grc-raw-response))
+                               (< (count-lines (point-min) (point-max))
+                                  grc-max-fetch-count))
                           (grc-list-fetch-more)
                         (grc-list-apply-marks marked-items))))))
              nil nil
