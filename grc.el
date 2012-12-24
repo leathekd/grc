@@ -113,7 +113,7 @@
 (defun grc-fetch-entries (&optional params)
   (let ((fn (or (cdr (assoc 'fn grc-current-state)) 'grc-req-fetch-entries)))
     (grc-list-make-buffer "Fetching entries...")
-    (switch-to-buffer grc-list-buffer)
+    (switch-to-buffer (get-buffer-create grc-list-buffer))
     (funcall fn (cdr (assoc 'id grc-current-state))
              '(lambda (response headers)
                 (let ((response (grc-req-parse-response response)))
@@ -126,7 +126,8 @@
   (setq grc-current-state (if prefixed-p
                               (grc-read-state)
                             grc-current-state))
-  (if (get-buffer grc-list-buffer)
+  (if (and (get-buffer grc-list-buffer)
+           (not prefixed-p))
       (switch-to-buffer grc-list-buffer)
     (grc-fetch-entries)))
 
