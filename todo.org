@@ -9,3 +9,7 @@
 *** DONE Implement incremental fetches with continuation tokens
 ** TODO Make the sort area of the header clickable
 ** TODO add 'o' keybinding to change order as well
+** TODO fetching read comes back with oldest first, should probably be reversed
+** TODO the read view somehow is saying that I have 10 unread
+   probably the case that the unread count is using the unread tag, no matter what
+** DONE find a better way to extract the href

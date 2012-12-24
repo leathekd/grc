@@ -109,6 +109,14 @@
   (goto-char (point-min))
   (grc-replace-regexp "</.?p>" "\n"))
 
+(defun grc-extract-href-from-region (start end)
+  (let ((text (buffer-substring start end)))
+    (with-temp-buffer
+      (insert text)
+      (goto-char (point-min))
+      (re-search-forward "href[ ]?=['\" ]?" (point-max) t)
+      (browse-url-url-at-point))))
+
 (defun grc-basic-buttonify-anchors ()
   "Walks through a buffer of html and removes the anchor tags,
   replacing them with a button that will browse the link"
@@ -117,12 +125,10 @@
     (let* ((p1 (point))
            (p2 (search-forward-regexp ">" nil t))
            (p3 (search-forward-regexp "</a>" nil t))
-           (attrs (html2text-get-attr p1 p2))
-           (href (html2text-attr-value attrs "href"))
-           (href (substring href 1 (1- (length href))))
+           (href (grc-extract-href-from-region p1 p3))
            (text (grc-basic-strip-html-to-string
                   (buffer-substring-no-properties p2 (- p3 4)))))
-      (when (and text (not (equal "" (s-trim text))))
+      (when (and href text (not (equal "" (s-trim text))))
         (progn
           (delete-region (- p1 2) p3)
           (let ((pt (point)))
