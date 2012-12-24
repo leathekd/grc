@@ -12,6 +12,6 @@
 ** DONE grc won't reload the list if the list buffer exists even when it should
    Specifically, when doing C-u grc to switch to a different list type
 ** TODO fetching read comes back with oldest first, should probably be reversed
-** TODO the read view somehow is saying that I have 10 unread
+** DONE the read view somehow is saying that I have 10 unread
    probably the case that the unread count is using the unread tag, no matter what
 ** DONE find a better way to extract the href
