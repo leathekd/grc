@@ -2,16 +2,17 @@
 ** TODO see if ucs-insert can handle some html entities
    For example (ucs-insert 8216) see the ucs-insert docs for how to
    handle hex and octal
-** WONTFIX Add a "fetch more" line at the end of the buffer
-   Not sure about this one as marking read and refreshing might be sufficient
-   only when the fetch window is less than the total number
+** TODO Add a "fetch more" line at the end of the buffer
+   to fetch beyond the grc-max-fetch-count
 ** DONE load all rows in batches
 *** DONE Implement incremental fetches with continuation tokens
 ** TODO Make the sort area of the header clickable
-** TODO add 'o' keybinding to change order as well
+*** TODO add 'o' keybinding to change order as well
 ** DONE grc won't reload the list if the list buffer exists even when it should
    Specifically, when doing C-u grc to switch to a different list type
-** TODO fetching read comes back with oldest first, should probably be reversed
+** DONE I was mistaken
+   fetching read/starred/kept comes back with oldest first
+   should probably be reversed
 ** DONE the read view somehow is saying that I have 10 unread
    probably the case that the unread count is using the unread tag, no matter what
 ** DONE find a better way to extract the href
