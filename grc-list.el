@@ -32,25 +32,14 @@
 ;;; Code:
 (defvar grc-list-buffer "*grc list*" "Name of the buffer for the grc list view")
 
-(defun grc-list-header-line (&optional unread-count)
+(defun grc-list-header-line ()
   "Set the header line for the grc-list-buffer"
-  (let ((count (let ((lines (count-lines (point-min) (point-max))))
-                 (if unread-count
-                     (if (> unread-count lines)
-                         (format "%s/%s" lines unread-count)
-                       unread-count)
-                   lines))))
-    (setq header-line-format
-          (format "%s  (%s)  Sort: %s %s"
-                  (cdr (assoc 'title grc-raw-response))
-                  count
-                  (car tabulated-list-sort-key)
-                  (if (cdr tabulated-list-sort-key) "▲" "▼"))))
-  ;; fetch the actual count
-  (when (and (not unread-count)
-             (equal grc-current-state
-                    (cdr (assoc "Unread" grc-state-alist))))
-    (grc-req-unread-count 'grc-list-header-line)))
+  (setq header-line-format
+        (format "%s  (%s)  Sort: %s %s"
+                (cdr (assoc 'title grc-raw-response))
+                (count-lines (point-min) (point-max))
+                (car tabulated-list-sort-key)
+                (if (cdr tabulated-list-sort-key) "▲" "▼"))))
 
 (defun grc-list-entry-data (e)
   "Calculate the data to print"
