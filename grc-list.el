@@ -316,7 +316,7 @@ view buffer or externally in the browser"
     (define-key map "?"         'grc-list-help)
     (define-key map "k"         'grc-list-mark-kept-unread)
     (define-key map "r"         'grc-list-mark-read)
-    (define-key map "*"         'grc-list-mark-starred)
+    (define-key map "s"         'grc-list-mark-starred)
     (define-key map "n"         'grc-list-next-entry)
     (define-key map "p"         'grc-list-previous-entry)
     (define-key map " "         'grc-list-show-entry)
