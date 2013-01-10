@@ -164,7 +164,7 @@
 
 (defun grc-mark-starred (entries &optional remove-p)
   "Marks the entry as starred on Google Reader"
-  (grc-req-mark-kept-unread
+  (grc-req-mark-starred
    (mapcar (lambda (i) (cdr (assoc 'id i))) entries)
    (mapcar (lambda (i) (cdr (assoc 'src-id i))) entries)
    remove-p))
