@@ -142,6 +142,16 @@
 (defun grc-basic-button-browse-url (overlay)
   (browse-url (overlay-get overlay 'url)))
 
+(defun grc-basic-convert-lists ()
+  (goto-char (point-max))
+  (while (search-backward-regexp "<li.*?>\\(.*?\\)</li>" nil t)
+    (let ((beg (match-beginning 0))
+          (end (match-end 0))
+          (txt (match-string 1)))
+      (delete-region beg end)
+      (goto-char beg)
+      (insert "\n- " txt "\n"))))
+
 (define-button-type 'grc-basic-link-button
   'follow-link t
   'face 'link
@@ -162,6 +172,7 @@
   (run-hooks 'grc-basic-before-render-hook)
   (grc-basic-buttonify-anchors)
   (grc-basic-insert-newlines)
+  (grc-basic-convert-lists)
   (goto-char (point-min))
   (grc-basic-strip-html)
   (fill-region (point-min) (point-max))
