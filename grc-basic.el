@@ -32,9 +32,8 @@
 ;; Boston, MA 02110-1301, USA.
 
 ;;; Code:
-(defvar grc-basic-html-entity-list nil)
-(setq grc-basic-html-entity-list
-      '(("&nbsp;" "") ;; do I need these spaces?
+(defvar grc-basic-html-entity-list
+        '(("&nbsp;" "") ;; do I need these spaces?
         ("&amp;" "&")
         ;; so many quotes - I'm ignoring left vs right
         ("&apos;" "'")
@@ -43,6 +42,7 @@
         ("&#8217;" "'")
         ("&prime;" "'")
         ("&quot;" "\"")
+        ("&rsquo;" "'")
         ("&#8220;" "\"")
         ("&#8221;" "\"")
         ("&ldquo;" "\"")
