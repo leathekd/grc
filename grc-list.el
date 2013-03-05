@@ -74,6 +74,8 @@
       (buffer-name))))
 
 (defun grc-list-apply-marks (marks)
+  "Used to reapply marks after new entries are added.
+Use `grc-list-marked-lines' to save the marked lines before refreshing."
   (save-excursion
     (goto-char (point-min))
     (while (not (eobp))
@@ -86,7 +88,11 @@
                          tag)))
                    marks)))
         (when tag
-          (tabulated-list-put-tag tag)))
+          (if (equal tag " ")
+              (grc-list-add-read-overlay)
+            (grc-list-mark-region tag
+                                  (line-beginning-position)
+                                  (line-end-position)))))
       (forward-line))))
 
 (defun grc-list-fetch-more ()
@@ -199,7 +205,8 @@
       (goto-char (point-min))
       (while (not (eobp))
         (let ((cmd (char-to-string (char-after))))
-          (unless (equal cmd " ")
+          (when (or (not (equal cmd " "))
+                    (grc-list-has-read-overlay-p))
             (let* ((alist (assoc cmd marked))
                    (lst (cdr alist)))
               (setq marked
