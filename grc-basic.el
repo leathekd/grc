@@ -90,8 +90,8 @@
 (defun grc-basic-strip-html ()
   "Converts some HTML entities and naively removes HTML tags."
   (grc-basic-convert-entities)
-  (-each '("head" "style" "script" "input" "select" "textarea")
-         'grc-basic-strip-tag)
+  (mapcar 'grc-basic-strip-tag
+          '("head" "style" "script" "input" "select" "textarea"))
   (goto-char (point-min))
   (grc-replace-regexp "<.*?>" "")
   (grc-basic-trim-left-in-buffer)
