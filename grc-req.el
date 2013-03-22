@@ -156,9 +156,7 @@
                         (mapcar (lambda (i) `("i" . ,i)) ids)
                         (mapcar (lambda (s) `("s" . ,s)) feeds))))
     (grc-req-request grc-req-edit-tag-url '(lambda (&rest x))
-                     "POST" nil params
-                     (list '("Content-Type" .
-                             "application/x-www-form-urlencoded")))))
+                     "POST" nil params)))
 
 (defun grc-req-mark-kept-unread (ids feeds)
   "Send a request to mark an entry as kept-unread.  Will also remove the read
