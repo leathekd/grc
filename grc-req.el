@@ -103,13 +103,13 @@
                  (grc-refresh-action-token
                   (lambda ()
                     (grc-req-request url callback method
-                                         params post-body headers
-                                         (1+ (or retry-count 0)))))
+                                     params post-body headers
+                                     (1+ (or retry-count 0)))))
                (grc-refresh-access-token
                 (lambda ()
                   (grc-req-request url callback method
-                                       params post-body headers
-                                       (1+ (or retry-count 0))))))))))
+                                   params post-body headers
+                                   (1+ (or retry-count 0))))))))))
     (grapnel-retrieve-url
      url
      `((success . ,callback)
@@ -123,7 +123,7 @@
                                    (* 1000000 (float-time)))))
                (output . "json"))
              (when (equal "POST" method)
-                 `(("T" . ,(plist-get grc-token :action-token)))))
+               `(("T" . ,(plist-get grc-token :action-token)))))
      post-body
      (append
       `(("Authorization" . ,(format "OAuth %s"
