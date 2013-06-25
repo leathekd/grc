@@ -33,7 +33,8 @@
 
 ;;; Code:
 (defvar grc-basic-html-entity-list
-  '(("&nbsp;" " ") ;; do I need these spaces?
+  '(("&nbsp;" " ")
+    ("&#160;" " ")
     ("&#xa0;" " ")
     (" " " ") ;; this is the literal unicode nbsp char
     ("&amp;" "&")
